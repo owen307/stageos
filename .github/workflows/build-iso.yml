@@ -1,0 +1,32 @@
+name: Build StageOS ISO
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Install build tools
+      run: |
+        sudo apt-get update -qq
+        sudo apt-get install -y \
+          debootstrap xorriso squashfs-tools \
+          grub-pc-bin grub-efi-amd64-bin mtools
+
+    - name: Build StageOS ISO
+      run: sudo bash os/build-iso.sh
+
+    - name: Upload ISO as artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: StageOS-v1.0-ISO
+        path: StageOS-v1.0.iso
+        retention-days: 30
