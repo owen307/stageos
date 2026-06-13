@@ -1,0 +1,49 @@
+{
+  "name": "stageos-installer",
+  "version": "1.1.0",
+  "description": "StageOS Installer — Production OS for Mac & Windows",
+  "main": "main.js",
+  "scripts": {
+    "start":       "electron .",
+    "build-mac":   "electron-builder --mac",
+    "build-win":   "electron-builder --win",
+    "build-linux": "electron-builder --linux",
+    "build-all":   "electron-builder --mac --win"
+  },
+  "build": {
+    "appId": "com.stageos.installer",
+    "productName": "StageOS Installer",
+    "extraResources": [
+      { "from": "payload/", "to": "payload/", "filter": ["**/*"] }
+    ],
+    "mac": {
+      "target": [{ "target": "dmg", "arch": ["x64"] }],
+      "category": "public.app-category.music",
+      "icon": "assets/icon.icns",
+      "entitlements": "assets/entitlements.mac.plist",
+      "entitlementsInherit": "assets/entitlements.mac.plist",
+      "hardenedRuntime": true
+    },
+    "win": {
+      "target": [{ "target": "nsis", "arch": ["x64"] }],
+      "icon": "assets/icon.ico",
+      "requestedExecutionLevel": "requireAdministrator"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": false,
+      "createDesktopShortcut": true,
+      "runAfterFinish": true,
+      "installerIcon": "assets/icon.ico",
+      "uninstallerIcon": "assets/icon.ico"
+    },
+    "linux": {
+      "target": "AppImage",
+      "icon": "assets/icon.png"
+    }
+  },
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "electron-builder": "^25.0.0"
+  }
+}
