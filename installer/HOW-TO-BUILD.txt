@@ -1,0 +1,43 @@
+# StageOS Installer — Build Instructions
+# ═══════════════════════════════════════
+
+## Prerequisites
+  Node.js 18+  →  https://nodejs.org
+  npm           →  included with Node.js
+
+## Install dependencies
+  npm install
+
+## Build for Mac (.dmg)
+  npm run build-mac
+  → dist/StageOS Installer-1.1.0.dmg
+
+## Build for Windows (.exe)
+  npm run build-win
+  → dist/StageOS Installer Setup 1.1.0.exe
+
+## Build both at once (from Mac)
+  npm run build-all
+  → builds Mac .dmg AND Windows .exe simultaneously
+  (electron-builder cross-compiles Windows from Mac automatically)
+
+## Test without building
+  npm start
+
+## What the Windows installer does differently
+  - Requests Administrator privileges upfront (requestedExecutionLevel)
+  - Uses PowerShell to write the ISO to USB (no dd.exe needed)
+  - Drive scanning uses wmic diskdrive
+  - NSIS creates a proper Windows installer with Start Menu entry
+
+## Code signing
+  Mac: Requires Apple Developer account ($99/yr) + notarization
+       Set env: CSC_LINK, CSC_KEY_PASSWORD, APPLE_ID, APPLE_APP_SPECIFIC_PASSWORD
+  Windows: Requires code signing cert (DigiCert ~$200/yr)
+           Set env: CSC_LINK, CSC_KEY_PASSWORD
+  Without signing: apps still work, users see a security warning on first launch
+
+## Distributing
+  Mac:     Share the .dmg directly or host for download
+  Windows: Share the Setup .exe directly or host for download
+  Both require ~700MB download due to bundled StageOS ISO
