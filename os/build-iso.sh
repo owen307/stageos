@@ -118,7 +118,7 @@ mksquashfs stageos-build/chroot stageos-build/iso/live/filesystem.squashfs \
 
 # Build ISO
 echo ">>> Building ISO..."
-grub-mkrescue --output=StageOS-v1.1.iso stageos-build/iso -- -volid STAGEOS_1_1
+grub-mkrescue --output=StageOS-v1.0.iso stageos-build/iso -- -volid STAGEOS_1_1
 
 echo ">>> DONE"
-ls -lh StageOS-v1.1.iso
+ls -lh StageOS-v1.0.iso
