@@ -1,0 +1,145 @@
+<!DOCTYPE html><html><head><meta charset="UTF-8"><title>LightScript</title>
+<style>:root{--bg:#0a0b0d;--surf:#0f1115;--surf2:#13171c;--border:#1e2530;--amber:#e8a020;--green:#22c55e;--red:#ef4444;--blue:#3b82f6;--purple:#a855f7;--text:#c8d4e0;--muted:#4b5563}*{box-sizing:border-box;margin:0;padding:0}body{background:var(--bg);color:var(--text);font-family:'Share Tech Mono',monospace;font-size:12px;height:100vh;display:flex;flex-direction:column;overflow:hidden}header{display:flex;align-items:center;justify-content:space-between;padding:0 16px;height:44px;background:var(--surf);border-bottom:1px solid var(--border);flex-shrink:0}.logo{font-weight:700;font-size:15px;color:var(--amber)}.tabs{display:flex;gap:2px}.tab{padding:5px 14px;border-radius:4px;cursor:pointer;font-size:11px;color:var(--muted);border:none;background:transparent}.tab.active{color:var(--text);background:var(--surf2)}.main{flex:1;display:flex;overflow:hidden}.panel{display:none;flex:1;overflow-y:auto;padding:16px;gap:12px;flex-direction:column}.panel.active{display:flex}.card{background:var(--surf);border:1px solid var(--border);border-radius:8px;padding:14px}.ct{font-size:9px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.12em;margin-bottom:10px}.g2{display:grid;grid-template-columns:1fr 1fr;gap:8px}.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}.g6{display:grid;grid-template-columns:repeat(6,1fr);gap:6px}.btn{padding:8px 12px;border-radius:5px;border:none;font-size:11px;font-weight:700;cursor:pointer;transition:all .15s;font-family:'Share Tech Mono',monospace}.bg{background:rgba(34,197,94,.15);border:1px solid rgba(34,197,94,.3);color:var(--green)}.br{background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.3);color:var(--red)}.ba{background:var(--amber);color:#000}.bs{background:var(--surf2);border:1px solid var(--border);color:var(--muted)}.btn:active{transform:scale(.97)}.cmdline{display:flex;gap:8px;margin-bottom:12px}.inp{flex:1;padding:8px 12px;background:var(--surf2);border:1px solid var(--border);border-radius:5px;color:var(--amber);font-size:13px;font-family:'Share Tech Mono',monospace;outline:none}.inp:focus{border-color:var(--amber)}.frow{display:flex;align-items:center;gap:8px;margin-bottom:6px}.flbl{font-size:10px;color:var(--muted);width:80px;flex-shrink:0}.fader{flex:1;height:4px;-webkit-appearance:none;background:var(--border);border-radius:2px;outline:none}.fader::-webkit-slider-thumb{-webkit-appearance:none;width:12px;height:12px;border-radius:50%;background:var(--amber)}.fval{font-size:10px;color:var(--muted);width:36px;text-align:right}.ch-grid{display:grid;grid-template-columns:repeat(12,1fr);gap:4px;margin-bottom:12px}.ch-cell{padding:6px 4px;border-radius:4px;border:1px solid var(--border);background:var(--surf2);text-align:center;cursor:pointer;transition:all .15s}.ch-cell:hover{border-color:var(--amber)}.ch-cell.sel{background:rgba(232,160,32,.15);border-color:var(--amber)}.ch-num{font-size:9px;color:var(--muted)}.ch-val{font-size:13px;font-weight:700;color:var(--text)}</style>
+</head><body>
+<header>
+  <div class="logo">⚡ LightScript v2.0</div>
+  <div class="tabs">
+    <button class="tab active" onclick="showTab('console')">Console</button>
+    <button class="tab" onclick="showTab('timeline')">Timeline</button>
+    <button class="tab" onclick="showTab('fixtures')">Fixtures</button>
+    <button class="tab" onclick="showTab('effects')">Effects</button>
+    <button class="tab" onclick="showTab('settings')">Settings</button>
+  </div>
+  <div style="font-size:10px;color:var(--muted)">Art-Net Ready</div>
+</header>
+<div class="main">
+  <div class="panel active" id="tab-console">
+    <div class="cmdline">
+      <input class="inp" id="cmd-input" placeholder="Chan 1 Full | Cue 1 Go | Sub 1 at 80 | Record Cue 5..." onkeydown="if(event.key==='Enter')runCmd()">
+      <button class="btn ba" onclick="runCmd()">Execute</button>
+      <button class="btn bs" onclick="document.getElementById('cmd-input').value=''">Clear</button>
+    </div>
+    <div class="card">
+      <div class="ct">Channel Levels (1-48)</div>
+      <div class="ch-grid" id="ch-grid"></div>
+      <div class="g3">
+        <button class="btn bg" onclick="sendCmd('full')">Full</button>
+        <button class="btn bs" onclick="sendCmd('out')">Out</button>
+        <button class="btn br" onclick="sendCmd('blackout')">Blackout</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="ct">Quick Cues</div>
+      <div id="cue-btns" class="g6"></div>
+    </div>
+  </div>
+  <div class="panel" id="tab-timeline">
+    <div class="card">
+      <div class="ct">Timeline — Cue List</div>
+      <div id="cue-list" style="display:flex;flex-direction:column;gap:4px;margin-bottom:10px"></div>
+      <div class="g3">
+        <button class="btn bg" onclick="cuego()">GO</button>
+        <button class="btn br" onclick="cuestop()">STOP</button>
+        <button class="btn bs" onclick="cueback()">BACK</button>
+      </div>
+    </div>
+  </div>
+  <div class="panel" id="tab-fixtures">
+    <div class="card">
+      <div class="ct">ML Controls</div>
+      <div id="ml-grid" class="g2"></div>
+    </div>
+  </div>
+  <div class="panel" id="tab-effects">
+    <div class="card">
+      <div class="ct">Effects Engine</div>
+      <div class="g2" id="effects-grid"></div>
+    </div>
+  </div>
+  <div class="panel" id="tab-settings">
+    <div class="card">
+      <div class="ct">Art-Net Config</div>
+      <div class="g2">
+        <div><label style="font-size:10px;color:var(--muted);display:block;margin-bottom:3px">Art-Net IP</label><input class="inp" id="artnet-ip" value="2.255.255.255"></div>
+        <div><label style="font-size:10px;color:var(--muted);display:block;margin-bottom:3px">Universe</label><input class="inp" id="artnet-univ" value="0"></div>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+function showTab(id){
+  document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',['console','timeline','fixtures','effects','settings'][i]===id));
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.getElementById('tab-'+id)?.classList.add('active');
+}
+
+// Channel grid
+const dmxValues = new Array(512).fill(0);
+const selectedChs = new Set();
+const grid = document.getElementById('ch-grid');
+for(let i=0;i<48;i++){
+  const el=document.createElement('div'); el.className='ch-cell';
+  el.id='ch-'+i;
+  el.innerHTML=`<div class="ch-num">${i+1}</div><div class="ch-val" id="cv-${i}">0</div>`;
+  el.onclick=()=>{selectedChs.has(i)?selectedChs.delete(i):selectedChs.add(i);el.classList.toggle('sel');};
+  grid.appendChild(el);
+}
+
+function setChannel(ch, val) {
+  dmxValues[ch] = Math.max(0,Math.min(255,val));
+  const el=document.getElementById('cv-'+ch);
+  if(el) el.textContent=Math.round(dmxValues[ch]/2.55)+'%';
+  window.ls?.sendDMX(0, dmxValues);
+}
+
+function sendCmd(cmd) { window.ls?.sendOSC(document.getElementById('artnet-ip')?.value||'192.168.1.100',3032,'/eos/cmd/'+cmd,[]); }
+function runCmd() {
+  const raw=document.getElementById('cmd-input').value.trim();
+  if(!raw)return;
+  sendCmd(raw);
+  document.getElementById('cmd-input').value='';
+}
+
+function cuego()  { window.ls?.sendOSC('192.168.1.100',3032,'/eos/cue/active/go',[]); }
+function cuestop(){ window.ls?.sendOSC('192.168.1.100',3032,'/eos/cue/active/stop',[]); }
+function cueback(){ window.ls?.sendOSC('192.168.1.100',3032,'/eos/cue/active/back',[]); }
+
+// Cue buttons
+const cueBtns=document.getElementById('cue-btns');
+for(let i=1;i<=12;i++){
+  const b=document.createElement('button'); b.className='btn bs';
+  b.textContent='Cue '+i; b.onclick=()=>window.ls?.sendOSC('192.168.1.100',3032,'/eos/cue/'+i+'/fire',[]);
+  cueBtns.appendChild(b);
+}
+
+// Cue list
+const cues=[{num:'1',label:'Opening',fade:3},{num:'2',label:'Verse',fade:2},{num:'3',label:'Chorus',fade:1},{num:'4',label:'Bridge',fade:2},{num:'5',label:'Closing',fade:4}];
+const cueList=document.getElementById('cue-list');
+cues.forEach(c=>{
+  const row=document.createElement('div');
+  row.style.cssText='display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--surf2);border-radius:5px;border:1px solid var(--border);cursor:pointer';
+  row.innerHTML=`<span style="color:var(--amber);font-size:11px;width:30px">${c.num}</span><span style="flex:1">${c.label}</span><span style="color:var(--muted);font-size:10px">${c.fade}s</span>`;
+  row.onclick=()=>window.ls?.sendOSC('192.168.1.100',3032,'/eos/cue/'+c.num+'/fire',[]);
+  cueList.appendChild(row);
+});
+
+// ML Controls
+const mlParams=['Pan','Tilt','Color Wheel','Gobo Rot','Zoom','Focus','Iris','Prism','Speed','Strobe','CTO','CMY R','CMY G','CMY B'];
+const mlGrid=document.getElementById('ml-grid');
+mlParams.forEach(p=>{
+  const el=document.createElement('div'); el.style.cssText='display:flex;flex-direction:column;gap:4px;padding:8px;background:var(--surf2);border-radius:5px;border:1px solid var(--border)';
+  el.innerHTML=`<div style="font-size:10px;color:var(--muted)">${p}</div><input type="range" class="fader" min="0" max="255" value="0" oninput="setChannel(${mlParams.indexOf(p)+100},+this.value)">`;
+  mlGrid.appendChild(el);
+});
+
+// Effects
+const effects=['Sine','Sawtooth','Square','Random'];
+const efGrid=document.getElementById('effects-grid');
+effects.forEach(e=>{
+  const el=document.createElement('div');
+  el.style.cssText='padding:12px;background:var(--surf2);border-radius:5px;border:1px solid var(--border)';
+  el.innerHTML=`<div style="font-size:11px;font-weight:700;margin-bottom:8px">${e}</div><div class="frow"><span class="flbl">Speed</span><input type="range" class="fader" min="0" max="100" value="50"></div><div class="frow"><span class="flbl">Size</span><input type="range" class="fader" min="0" max="100" value="50"></div>`;
+  efGrid.appendChild(el);
+});
+</script>
+</body></html>
