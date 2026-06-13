@@ -1,0 +1,1068 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>StageOS — Equipment Check</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;500;600;700;900&family=Barlow+Condensed:wght@700;900&display=swap');
+
+:root {
+  --bg:        #070809;
+  --grid:      #0d1014;
+  --surface:   #0f1115;
+  --surface2:  #13171c;
+  --border:    #1e2530;
+  --border2:   #252e3a;
+  --amber:     #e8a020;
+  --amber2:    #f5b840;
+  --green:     #00e87a;
+  --red:       #ff3b55;
+  --yellow:    #ffd60a;
+  --blue:      #3d9eff;
+  --muted:     #3d4857;
+  --text:      #c8d4e0;
+  --text2:     #8899aa;
+  --mono:      'Share Tech Mono', monospace;
+  --sans:      'Barlow', sans-serif;
+  --cond:      'Barlow Condensed', sans-serif;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  width: 100%; height: 100%;
+  background: var(--bg); color: var(--text);
+  font-family: var(--sans);
+  overflow: hidden;
+}
+
+/* ── Scanline + grid background ── */
+body::before {
+  content: '';
+  position: fixed; inset: 0; z-index: 0;
+  background-image:
+    linear-gradient(var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size: 40px 40px;
+  opacity: .6;
+  pointer-events: none;
+}
+body::after {
+  content: '';
+  position: fixed; inset: 0; z-index: 0;
+  background: repeating-linear-gradient(
+    0deg, transparent, transparent 2px,
+    rgba(0,0,0,.08) 2px, rgba(0,0,0,.08) 4px
+  );
+  pointer-events: none;
+}
+
+/* ── Layout ── */
+#app {
+  position: relative; z-index: 1;
+  width: 100%; height: 100%;
+  display: flex; flex-direction: column;
+}
+
+/* ── Header ── */
+header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 28px;
+  border-bottom: 1px solid var(--border);
+  background: rgba(7,8,9,.8);
+  backdrop-filter: blur(8px);
+}
+.hd-left { display: flex; align-items: center; gap: 14px; }
+.logo-mark {
+  width: 36px; height: 36px; background: var(--amber);
+  clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--cond); font-weight: 900; font-size: 16px; color: #000;
+  flex-shrink: 0;
+}
+.hd-title {
+  font-family: var(--cond); font-weight: 900; font-size: 22px;
+  letter-spacing: .08em; text-transform: uppercase;
+}
+.hd-title span { color: var(--amber); }
+.hd-sub {
+  font-family: var(--mono); font-size: 10px; color: var(--muted);
+  letter-spacing: .1em; text-transform: uppercase; margin-top: 2px;
+}
+.hd-right { display: flex; align-items: center; gap: 20px; }
+.hd-clock {
+  font-family: var(--mono); font-size: 22px; color: var(--amber);
+  letter-spacing: .06em;
+}
+.hd-date { font-family: var(--mono); font-size: 10px; color: var(--muted); text-align: right; margin-top: 2px; }
+
+/* ── Status bar ── */
+#statusbar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 6px 28px;
+  background: var(--surface); border-bottom: 1px solid var(--border);
+  font-family: var(--mono); font-size: 11px;
+}
+.sb-left { display: flex; align-items: center; gap: 6px; color: var(--text2); }
+.sb-indicator {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--muted); flex-shrink: 0;
+}
+.sb-indicator.idle    { background: var(--muted); }
+.sb-indicator.running { background: var(--yellow); animation: blink .6s infinite; }
+.sb-indicator.pass    { background: var(--green); }
+.sb-indicator.fail    { background: var(--red); }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+.sb-right { display: flex; gap: 20px; }
+.sb-stat { color: var(--muted); }
+.sb-stat span { color: var(--text); }
+
+/* ── Main ── */
+#main { flex: 1; display: flex; overflow: hidden; }
+
+/* ── Test Grid ── */
+#test-grid {
+  flex: 1; padding: 20px 24px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  gap: 14px; overflow: hidden;
+}
+
+/* ── Test Card ── */
+.test-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  display: flex; flex-direction: column;
+  overflow: hidden;
+  position: relative;
+  transition: border-color .3s;
+}
+.test-card::before {
+  content: ''; position: absolute;
+  top: 0; left: 0; right: 0; height: 2px;
+  background: var(--card-color, var(--border));
+  transition: background .3s;
+}
+.test-card.running { border-color: var(--yellow); }
+.test-card.running::before { background: var(--yellow); animation: pulse-bar 1s infinite; }
+.test-card.pass    { border-color: rgba(0,232,122,.3); }
+.test-card.pass::before    { background: var(--green); }
+.test-card.fail    { border-color: rgba(255,59,85,.4); }
+.test-card.fail::before    { background: var(--red); }
+@keyframes pulse-bar { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+.card-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 16px 8px;
+  border-bottom: 1px solid var(--border);
+}
+.card-left { display: flex; align-items: center; gap: 10px; }
+.card-icon { font-size: 18px; }
+.card-title {
+  font-family: var(--cond); font-weight: 700; font-size: 15px;
+  letter-spacing: .04em; text-transform: uppercase;
+}
+.card-badge {
+  font-family: var(--mono); font-size: 10px; font-weight: 700;
+  padding: 2px 8px; border-radius: 3px; letter-spacing: .08em;
+  background: var(--surface2); color: var(--muted); border: 1px solid var(--border2);
+  transition: all .3s;
+}
+.test-card.running .card-badge { background: rgba(255,214,10,.1); color: var(--yellow); border-color: rgba(255,214,10,.3); }
+.test-card.pass    .card-badge { background: rgba(0,232,122,.1); color: var(--green);  border-color: rgba(0,232,122,.3); }
+.test-card.fail    .card-badge { background: rgba(255,59,85,.1);  color: var(--red);   border-color: rgba(255,59,85,.3); }
+
+.card-body { flex: 1; padding: 10px 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; }
+
+/* ── Sub-tests ── */
+.subtest {
+  display: flex; align-items: center; gap: 8px;
+  padding: 5px 8px; border-radius: 5px;
+  background: var(--surface2);
+  font-size: 12px; transition: background .2s;
+}
+.subtest.running { background: rgba(255,214,10,.06); }
+.subtest.pass    { background: rgba(0,232,122,.05); }
+.subtest.fail    { background: rgba(255,59,85,.06); }
+.st-dot {
+  width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0;
+  background: var(--muted); transition: background .3s;
+}
+.subtest.running .st-dot { background: var(--yellow); animation: blink .5s infinite; }
+.subtest.pass    .st-dot { background: var(--green); }
+.subtest.fail    .st-dot { background: var(--red); }
+.st-name { flex: 1; color: var(--text2); font-family: var(--sans); }
+.subtest.running .st-name { color: var(--text); }
+.subtest.pass    .st-name { color: var(--text); }
+.st-val {
+  font-family: var(--mono); font-size: 11px; color: var(--muted);
+  white-space: nowrap; transition: color .3s;
+}
+.subtest.pass .st-val { color: var(--green); }
+.subtest.fail .st-val { color: var(--red); }
+
+/* ── Progress bar inside card ── */
+.card-progress {
+  height: 2px; background: var(--border); margin: 0 16px 10px;
+  border-radius: 1px; overflow: hidden;
+}
+.card-progress-fill {
+  height: 100%; width: 0%; border-radius: 1px;
+  background: var(--yellow); transition: width .4s ease, background .3s;
+}
+.test-card.pass  .card-progress-fill { background: var(--green); width: 100%; }
+.test-card.fail  .card-progress-fill { background: var(--red);   width: 100%; }
+
+/* ── Right Panel ── */
+#right-panel {
+  width: 240px; border-left: 1px solid var(--border);
+  display: flex; flex-direction: column;
+  background: var(--surface);
+}
+.rp-section { padding: 14px 16px; border-bottom: 1px solid var(--border); }
+.rp-title {
+  font-family: var(--mono); font-size: 9px; color: var(--muted);
+  text-transform: uppercase; letter-spacing: .14em; margin-bottom: 10px;
+}
+
+/* ── Summary widget ── */
+.summary-ring-wrap { display: flex; justify-content: center; padding: 8px 0 12px; }
+.ring-container { position: relative; width: 90px; height: 90px; }
+.ring-svg { width: 90px; height: 90px; transform: rotate(-90deg); }
+.ring-bg   { fill: none; stroke: var(--border2); stroke-width: 6; }
+.ring-fill { fill: none; stroke-width: 6; stroke-linecap: round;
+  stroke-dasharray: 220; stroke-dashoffset: 220;
+  transition: stroke-dashoffset 1s ease, stroke .5s; }
+.ring-center {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+}
+.ring-pct  { font-family: var(--cond); font-weight: 900; font-size: 24px; line-height: 1; }
+.ring-label { font-family: var(--mono); font-size: 8px; color: var(--muted); margin-top: 2px; }
+
+.summary-stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
+.ss-box {
+  background: var(--surface2); border-radius: 5px; border: 1px solid var(--border2);
+  padding: 6px 8px; text-align: center;
+}
+.ss-num  { font-family: var(--cond); font-weight: 900; font-size: 18px; line-height: 1; }
+.ss-lbl  { font-family: var(--mono); font-size: 8px; color: var(--muted); margin-top: 2px; }
+.ss-box.pass .ss-num { color: var(--green); }
+.ss-box.fail .ss-num { color: var(--red); }
+.ss-box.warn .ss-num { color: var(--yellow); }
+
+/* ── Log ── */
+.log-wrap { flex: 1; overflow-y: auto; padding: 8px 12px; }
+.log-entry {
+  font-family: var(--mono); font-size: 10px; line-height: 1.8;
+  color: var(--muted); display: flex; gap: 6px;
+}
+.log-entry .le-ts { color: var(--border2); flex-shrink: 0; }
+.log-entry.ok   .le-msg { color: var(--green); }
+.log-entry.err  .le-msg { color: var(--red); }
+.log-entry.warn .le-msg { color: var(--yellow); }
+.log-entry.info .le-msg { color: var(--blue); }
+
+/* ── Footer ── */
+footer {
+  padding: 12px 28px;
+  border-top: 1px solid var(--border);
+  background: rgba(7,8,9,.9);
+  display: flex; align-items: center; justify-content: space-between;
+  backdrop-filter: blur(8px);
+}
+.footer-hint {
+  font-family: var(--mono); font-size: 10px; color: var(--muted);
+  display: flex; align-items: center; gap: 8px;
+}
+.kbd {
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: 1px 6px; border-radius: 3px;
+  border: 1px solid var(--border2); background: var(--surface2);
+  font-family: var(--mono); font-size: 10px; color: var(--text2);
+}
+.footer-btns { display: flex; gap: 10px; }
+.btn {
+  padding: 8px 22px; border-radius: 5px; border: none;
+  font-family: var(--cond); font-weight: 700; font-size: 14px;
+  letter-spacing: .06em; text-transform: uppercase;
+  cursor: pointer; transition: all .15s;
+}
+.btn-ghost {
+  background: transparent; color: var(--text2);
+  border: 1px solid var(--border2);
+}
+.btn-ghost:hover { background: var(--surface2); color: var(--text); }
+.btn-amber {
+  background: var(--amber); color: #000;
+}
+.btn-amber:hover { background: var(--amber2); }
+.btn-green {
+  background: var(--green); color: #000;
+}
+.btn-green:hover { filter: brightness(1.1); }
+.btn:disabled { opacity: .3; cursor: not-allowed; }
+
+/* ── Idle overlay ── */
+#idle-overlay {
+  position: fixed; inset: 0; z-index: 50;
+  background: rgba(7,8,9,.92);
+  backdrop-filter: blur(6px);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 0;
+}
+.idle-icon { font-size: 56px; margin-bottom: 16px; }
+.idle-title {
+  font-family: var(--cond); font-weight: 900;
+  font-size: 36px; letter-spacing: .06em; text-transform: uppercase;
+  margin-bottom: 8px;
+}
+.idle-title span { color: var(--amber); }
+.idle-sub {
+  font-family: var(--sans); font-size: 14px; color: var(--text2);
+  max-width: 460px; text-align: center; line-height: 1.6; margin-bottom: 32px;
+}
+.idle-actions { display: flex; gap: 12px; }
+.idle-tip {
+  position: absolute; bottom: 32px;
+  font-family: var(--mono); font-size: 10px; color: var(--muted);
+  text-align: center;
+}
+
+/* ── Done overlay ── */
+#done-overlay {
+  position: fixed; inset: 0; z-index: 50;
+  background: rgba(7,8,9,.93);
+  backdrop-filter: blur(6px);
+  display: none; flex-direction: column;
+  align-items: center; justify-content: center;
+}
+.done-icon { font-size: 60px; margin-bottom: 14px; animation: popIn .4s cubic-bezier(.34,1.56,.64,1); }
+@keyframes popIn { from{transform:scale(0)} to{transform:scale(1)} }
+.done-title {
+  font-family: var(--cond); font-weight: 900; font-size: 32px;
+  letter-spacing: .06em; text-transform: uppercase; margin-bottom: 8px;
+}
+.done-sub {
+  font-family: var(--sans); font-size: 13px; color: var(--text2);
+  text-align: center; margin-bottom: 28px; max-width: 400px; line-height: 1.6;
+}
+.done-results {
+  display: flex; gap: 10px; margin-bottom: 28px;
+}
+.dr-chip {
+  padding: 6px 16px; border-radius: 5px;
+  font-family: var(--cond); font-weight: 700; font-size: 15px;
+  letter-spacing: .06em; text-transform: uppercase;
+}
+.dr-chip.pass { background: rgba(0,232,122,.12); color: var(--green); border: 1px solid rgba(0,232,122,.3); }
+.dr-chip.fail { background: rgba(255,59,85,.12);  color: var(--red);  border: 1px solid rgba(255,59,85,.3); }
+.dr-chip.warn { background: rgba(255,214,10,.1);  color: var(--yellow); border: 1px solid rgba(255,214,10,.3); }
+.done-actions { display: flex; gap: 12px; }
+
+/* ── Animations ── */
+@keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:none} }
+.test-card { animation: fadeIn .3s ease both; }
+.test-card:nth-child(2) { animation-delay: .05s; }
+.test-card:nth-child(3) { animation-delay: .1s; }
+.test-card:nth-child(4) { animation-delay: .15s; }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- Header -->
+  <header>
+    <div class="hd-left">
+      <div class="logo-mark">S</div>
+      <div>
+        <div class="hd-title">Stage<span>OS</span></div>
+        <div class="hd-sub">Pre-Show Equipment Diagnostics</div>
+      </div>
+    </div>
+    <div class="hd-right">
+      <div>
+        <div class="hd-clock" id="clock">--:--:--</div>
+        <div class="hd-date"  id="date">---</div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Status Bar -->
+  <div id="statusbar">
+    <div class="sb-left">
+      <div class="sb-indicator idle" id="sb-dot"></div>
+      <span id="sb-msg">Ready to test — press Run Equipment Test to begin</span>
+    </div>
+    <div class="sb-right">
+      <div class="sb-stat">Tests: <span id="sb-total">0</span></div>
+      <div class="sb-stat">Pass: <span id="sb-pass" style="color:var(--green)">—</span></div>
+      <div class="sb-stat">Fail: <span id="sb-fail" style="color:var(--red)">—</span></div>
+      <div class="sb-stat">Elapsed: <span id="sb-elapsed">0.0s</span></div>
+    </div>
+  </div>
+
+  <!-- Main -->
+  <div id="main">
+    <div id="test-grid">
+
+      <!-- DMX Card -->
+      <div class="test-card" id="card-dmx" style="--card-color:#a855f7">
+        <div class="card-header">
+          <div class="card-left">
+            <div class="card-icon">💡</div>
+            <div class="card-title">DMX / Lighting</div>
+          </div>
+          <div class="card-badge" id="badge-dmx">IDLE</div>
+        </div>
+        <div class="card-body" id="body-dmx">
+          <div class="subtest" id="st-ola"><div class="st-dot"></div><span class="st-name">OLA daemon running</span><span class="st-val">—</span></div>
+          <div class="subtest" id="st-artnet"><div class="st-dot"></div><span class="st-name">Art-Net output (port 6454)</span><span class="st-val">—</span></div>
+          <div class="subtest" id="st-sacn"><div class="st-dot"></div><span class="st-name">sACN / E1.31 output</span><span class="st-val">—</span></div>
+          <div class="subtest" id="st-usb"><div class="st-dot"></div><span class="st-name">USB-DMX interface</span><span class="st-val">—</span></div>
+          <div class="subtest" id="st-u1"><div class="st-dot"></div><span class="st-name">Universe 1 — test sweep</span><span class="st-val">—</span></div>
+          <div class="subtest" id="st-u2"><div class="st-dot"></div><span class="st-name">Universe 2 — test sweep</span><span class="st-val">—</span></div>
+        </div>
+        <div class="card-progress"><div class="card-progress-fill" id="prog-dmx"></div></div>
+      </div>
+
+      <!-- Audio Card -->
+      <div class="test-card" id="card-audio" style="--card-color:#22c55e">
+        <div class="card-header">
+          <div class="card-left">
+            <div class="card-icon">🔊</div>
+            <div class="card-title">Audio</div>
+          </div>
+          <div class="card-badge" id="badge-audio">IDLE</div>
+        </div>
+        <div class="card-body" id="body-audio">
+          <div class="subtest" id="st-jack"><div class="st-dot"></div><span class="st-name">JACK server running</span><span class="st-val">—</span></div>
+          <div class="subtest" id="st-alsa"><div class="st-dot"></div><span class="st-name">ALSA device detected</span><span class="st-val">—</span></div>
+          <div class="subtest" id="st-foh"><div class="st-dot"></div><span class="st-name">FOH output (ch 1/2)</span><span class="st-val">—</span></div>
+          <div class="subtest" id="st-iem"><div class="st-dot"></div><span class="st-name">IEM output (ch 3/4)</span><span class="st-val">—</span></div>
+          <div class="subtest" id="st-rec"><div class="st-dot"></div><span class="st-name">Record output (ch 5/6)</span><span class="st-val">—</span></div>
+          <div class="subtest" id="st-latency"><div class="st-dot"></div><span class="st-name">JACK latency</span><span class="st-val">—</span></div>
+        </div>
+        <div class="card-progress"><div class="card-progress-fill" id="prog-audio"></div></div>
+      </div>
+
+      <!-- Video Card -->
+      <div class="test-card" id="card-video" style="--card-color:#3b82f6">
+        <div class="card-header">
+          <div class="card-left">
+            <div class="card-icon">🖥️</div>
+            <div class="card-title">Video Outputs</div>
+          </div>
+          <div class="card-badge" id="badge-video">IDLE</div>
+        </div>
+        <div class="card-body" id="body-video">
+          <div class="subtest" id="st-xrandr"><div class="st-dot"></div><span class="st-name">Display server (X.org)</span><span class="st-val">—</span></div>
+          <div class="subtest" id="st-disp1"><div class="st-dot"></div><span class="st-name">Output 1 — Operator</span><span class="st-val">—</span></div>
+          <div class="subtest" id="st-disp2"><div class="st-dot"></div><span class="st-name">Output 2 — Stage</span><span class="st-val">—</span></div>
+          <div class="subtest" id="st-disp3"><div class="st-dot"></div><span class="st-name">Output 3 — FOH / Confidence</span><span class="st-val">—</span></div>
+          <div class="subtest" id="st-extend"><div class="st-dot"></div><span class="st-name">Extended mode (no mirror)</span><span class="st-val">—</span></div>
+          <div class="subtest" id="st-refresh"><div class="st-dot"></div><span class="st-name">Refresh rate check</span><span class="st-val">—</span></div>
+        </div>
+        <div class="card-progress"><div class="card-progress-fill" id="prog-video"></div></div>
+      </div>
+
+      <!-- Network Card -->
+      <div class="test-card" id="card-net" style="--card-color:#e8a020">
+        <div class="card-header">
+          <div class="card-left">
+            <div class="card-icon">🌐</div>
+            <div class="card-title">Network Devices</div>
+          </div>
+          <div class="card-badge" id="badge-net">IDLE</div>
+        </div>
+        <div class="card-body" id="body-net">
+          <div class="subtest" id="st-iface"><div class="st-dot"></div><span class="st-name">Network interface</span><span class="st-val">—</span></div>
+          <div class="subtest" id="st-eos"><div class="st-dot"></div><span class="st-name">ETC EOS Console</span><span class="st-val">—</span></div>
+          <div class="subtest" id="st-m32"><div class="st-dot"></div><span class="st-name">M32 / WING Mixer</span><span class="st-val">—</span></div>
+          <div class="subtest" id="st-atem"><div class="st-dot"></div><span class="st-name">ATEM Switcher</span><span class="st-val">—</span></div>
+          <div class="subtest" id="st-pp"><div class="st-dot"></div><span class="st-name">ProPresenter</span><span class="st-val">—</span></div>
+          <div class="subtest" id="st-daemon"><div class="st-dot"></div><span class="st-name">Output daemon (WS:9001)</span><span class="st-val">—</span></div>
+        </div>
+        <div class="card-progress"><div class="card-progress-fill" id="prog-net"></div></div>
+      </div>
+
+    </div><!-- /test-grid -->
+
+    <!-- Right Panel -->
+    <div id="right-panel">
+
+      <div class="rp-section">
+        <div class="rp-title">Overall Score</div>
+        <div class="summary-ring-wrap">
+          <div class="ring-container">
+            <svg class="ring-svg" viewBox="0 0 90 90">
+              <circle class="ring-bg"   cx="45" cy="45" r="35"/>
+              <circle class="ring-fill" cx="45" cy="45" r="35" id="ring-fill"
+                stroke="var(--muted)"/>
+            </svg>
+            <div class="ring-center">
+              <div class="ring-pct"  id="ring-pct">—</div>
+              <div class="ring-label">SCORE</div>
+            </div>
+          </div>
+        </div>
+        <div class="summary-stats">
+          <div class="ss-box pass"><div class="ss-num" id="sum-pass">0</div><div class="ss-lbl">PASS</div></div>
+          <div class="ss-box fail"><div class="ss-num" id="sum-fail">0</div><div class="ss-lbl">FAIL</div></div>
+          <div class="ss-box warn"><div class="ss-num" id="sum-warn">0</div><div class="ss-lbl">WARN</div></div>
+        </div>
+      </div>
+
+      <div class="rp-section" style="flex:1;display:flex;flex-direction:column;overflow:hidden">
+        <div class="rp-title">Test Log</div>
+        <div class="log-wrap" id="log-wrap"></div>
+      </div>
+
+    </div>
+  </div><!-- /main -->
+
+  <!-- Footer -->
+  <footer>
+    <div class="footer-hint">
+      <kbd class="kbd">ESC</kbd> Skip to launcher
+      &nbsp;·&nbsp;
+      <kbd class="kbd">R</kbd> Re-run tests
+      &nbsp;·&nbsp;
+      <kbd class="kbd">SPACE</kbd> Run test
+    </div>
+    <div class="footer-btns">
+      <button class="btn btn-ghost" id="btn-skip" onclick="skipToLauncher()">Skip →</button>
+      <button class="btn btn-amber" id="btn-run"  onclick="runAllTests()">▶ Run Equipment Test</button>
+    </div>
+  </footer>
+
+</div><!-- /app -->
+
+<!-- Idle Overlay -->
+<div id="idle-overlay">
+  <div class="idle-icon">🎛️</div>
+  <div class="idle-title">Pre-Show <span>Equipment Check</span></div>
+  <div class="idle-sub">
+    StageOS can test all your equipment before the show starts —
+    DMX outputs, audio routing, video displays, and network devices.
+    This takes about 15 seconds.
+  </div>
+  <div class="idle-actions">
+    <button class="btn btn-ghost" style="font-size:15px;padding:10px 28px" onclick="skipToLauncher()">Skip, Go to Launcher</button>
+    <button class="btn btn-amber" style="font-size:15px;padding:10px 28px" onclick="startFromOverlay()">▶ Run Equipment Test</button>
+  </div>
+  <div class="idle-tip">
+    This screen appears once on boot. You can re-run tests anytime from the launcher.
+  </div>
+</div>
+
+<!-- Done Overlay -->
+<div id="done-overlay">
+  <div class="done-icon" id="done-icon">✅</div>
+  <div class="done-title" id="done-title">All Systems Go</div>
+  <div class="done-sub"  id="done-sub">All equipment tested successfully. You're ready for the show.</div>
+  <div class="done-results" id="done-results"></div>
+  <div class="done-actions">
+    <button class="btn btn-ghost" style="padding:10px 24px" onclick="closeDoneOverlay()">View Details</button>
+    <button class="btn btn-green" style="padding:10px 28px;font-size:15px" onclick="goToLauncher()">Go to Launcher →</button>
+  </div>
+</div>
+
+<script>
+// ── Config (reads from devices.json in real OS) ──────────────
+const DEVICES = {
+  eos:  { label: 'ETC EOS Console',   ip: '192.168.1.100', port: 3032  },
+  m32:  { label: 'M32 / WING Mixer',  ip: '192.168.1.101', port: 10023 },
+  atem: { label: 'ATEM Switcher',     ip: '192.168.1.103', port: 9910  },
+  pp:   { label: 'ProPresenter',      ip: '192.168.1.104', port: 50001 }
+};
+
+// ── State ──────────────────────────────────────────────────
+let testRunning = false;
+let startTime   = null;
+let totalPass   = 0;
+let totalFail   = 0;
+let totalWarn   = 0;
+let elapsedTimer = null;
+
+// ── Clock ──────────────────────────────────────────────────
+function updateClock() {
+  const now = new Date();
+  document.getElementById('clock').textContent =
+    now.toLocaleTimeString('en-US', { hour12: false });
+  document.getElementById('date').textContent =
+    now.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+// ── Elapsed timer ──────────────────────────────────────────
+function startElapsed() {
+  startTime = Date.now();
+  elapsedTimer = setInterval(() => {
+    const s = ((Date.now() - startTime) / 1000).toFixed(1);
+    document.getElementById('sb-elapsed').textContent = s + 's';
+  }, 100);
+}
+function stopElapsed() { clearInterval(elapsedTimer); }
+
+// ── Log ────────────────────────────────────────────────────
+function log(type, msg) {
+  const wrap = document.getElementById('log-wrap');
+  const ts   = new Date().toLocaleTimeString('en-US', { hour12: false });
+  const el   = document.createElement('div');
+  el.className = `log-entry ${type}`;
+  el.innerHTML = `<span class="le-ts">${ts}</span><span class="le-msg">${msg}</span>`;
+  wrap.appendChild(el);
+  wrap.scrollTop = wrap.scrollHeight;
+}
+
+// ── Status bar ─────────────────────────────────────────────
+function setStatus(state, msg) {
+  const dot = document.getElementById('sb-dot');
+  dot.className = 'sb-indicator ' + state;
+  document.getElementById('sb-msg').textContent = msg;
+}
+
+// ── Score ring ─────────────────────────────────────────────
+function updateScore() {
+  const total = totalPass + totalFail + totalWarn;
+  if (!total) return;
+  const pct = Math.round((totalPass / total) * 100);
+  const circumference = 220;
+  const offset = circumference - (pct / 100) * circumference;
+  const ring  = document.getElementById('ring-fill');
+  ring.style.strokeDashoffset = offset;
+  ring.style.stroke = pct >= 80 ? 'var(--green)' : pct >= 50 ? 'var(--yellow)' : 'var(--red)';
+  document.getElementById('ring-pct').textContent  = pct + '%';
+  document.getElementById('sum-pass').textContent  = totalPass;
+  document.getElementById('sum-fail').textContent  = totalFail;
+  document.getElementById('sum-warn').textContent  = totalWarn;
+  document.getElementById('sb-pass').textContent   = totalPass;
+  document.getElementById('sb-fail').textContent   = totalFail;
+  document.getElementById('sb-total').textContent  = total;
+}
+
+// ── Sub-test helpers ───────────────────────────────────────
+function stSet(id, state, val) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.className = 'subtest ' + state;
+  if (val !== undefined) el.querySelector('.st-val').textContent = val;
+}
+function stRunning(id) { stSet(id, 'running'); }
+function stPass(id, val) {
+  stSet(id, 'pass', val || '✓');
+  totalPass++;
+  updateScore();
+}
+function stFail(id, val) {
+  stSet(id, 'fail', val || '✗');
+  totalFail++;
+  updateScore();
+}
+function stWarn(id, val) {
+  stSet(id, 'pass', val || '⚠');  // warn still counts as pass for score
+  totalWarn++;
+  updateScore();
+}
+
+function setCard(id, state, badge) {
+  const card = document.getElementById('card-' + id);
+  card.className = 'test-card ' + state;
+  document.getElementById('badge-' + id).textContent = badge;
+}
+function setProgress(id, pct) {
+  document.getElementById('prog-' + id).style.width = pct + '%';
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+// ── Simulated hardware checks ──────────────────────────────
+// In the real OS these call actual system commands via the
+// Electron main process or the output daemon WebSocket.
+
+async function testDMX() {
+  setCard('dmx', 'running', 'TESTING');
+  log('info', 'DMX: Starting lighting diagnostics');
+  setStatus('running', 'Testing DMX outputs…');
+
+  stRunning('st-ola');
+  await sleep(400);
+  // Real: check if olad process is running (pgrep olad)
+  const olaRunning = await checkProcess('olad');
+  if (olaRunning) { stPass('st-ola', 'PID ' + olaRunning); log('ok', 'DMX: OLA daemon running'); }
+  else            { stFail('st-ola', 'Not running'); log('err', 'DMX: OLA daemon not found — USB-DMX may not work'); }
+  setProgress('dmx', 16);
+
+  stRunning('st-artnet');
+  await sleep(350);
+  // Real: check UDP port 6454 is bound / send test packet
+  const artnetOk = await checkUDPPort(6454);
+  stPass('st-artnet', artnetOk ? 'Port open' : 'Broadcast');
+  log('ok', 'DMX: Art-Net output active on 2.255.255.255:6454');
+  setProgress('dmx', 32);
+
+  stRunning('st-sacn');
+  await sleep(300);
+  stPass('st-sacn', 'Multicast');
+  log('ok', 'DMX: sACN E1.31 output active');
+  setProgress('dmx', 48);
+
+  stRunning('st-usb');
+  await sleep(500);
+  // Real: check /dev/ttyUSB0 or similar
+  const usbDev = await checkUSBDMX();
+  if (usbDev) { stPass('st-usb', usbDev);   log('ok',  'DMX: USB interface detected — ' + usbDev); }
+  else        { stWarn('st-usb', 'Not found'); log('warn', 'DMX: No USB-DMX interface found (Art-Net/sACN still active)'); }
+  setProgress('dmx', 64);
+
+  stRunning('st-u1');
+  await sleep(600);
+  // Real: send test sweep (0→255→0 on all channels) and verify no errors
+  stPass('st-u1', '512ch ✓');
+  log('ok', 'DMX: Universe 1 sweep complete — all 512 channels responsive');
+  setProgress('dmx', 82);
+
+  stRunning('st-u2');
+  await sleep(500);
+  stPass('st-u2', '512ch ✓');
+  log('ok', 'DMX: Universe 2 sweep complete');
+  setProgress('dmx', 100);
+
+  setCard('dmx', 'pass', 'PASS');
+  log('ok', 'DMX: All lighting tests passed');
+}
+
+async function testAudio() {
+  setCard('audio', 'running', 'TESTING');
+  log('info', 'Audio: Starting audio diagnostics');
+  setStatus('running', 'Testing audio outputs…');
+
+  stRunning('st-jack');
+  await sleep(400);
+  const jackOk = await checkProcess('jackd');
+  if (jackOk) { stPass('st-jack', 'PID ' + jackOk); log('ok', 'Audio: JACK server running'); }
+  else        { stFail('st-jack', 'Not running');    log('err', 'Audio: JACK not running — audio output unavailable'); }
+  setProgress('audio', 16);
+
+  stRunning('st-alsa');
+  await sleep(350);
+  // Real: aplay -l to detect devices
+  stPass('st-alsa', 'hw:0,0');
+  log('ok', 'Audio: ALSA device detected — hw:0 (primary interface)');
+  setProgress('audio', 32);
+
+  stRunning('st-foh');
+  await sleep(500);
+  // Real: check JACK port connections for FOH outputs
+  stPass('st-foh', '-18 dBFS');
+  log('ok', 'Audio: FOH output active — ch 1/2 connected');
+  setProgress('audio', 48);
+
+  stRunning('st-iem');
+  await sleep(400);
+  stPass('st-iem', '-22 dBFS');
+  log('ok', 'Audio: IEM mix active — ch 3/4 connected');
+  setProgress('audio', 64);
+
+  stRunning('st-rec');
+  await sleep(300);
+  stPass('st-rec', '-18 dBFS');
+  log('ok', 'Audio: Record bus active — ch 5/6 connected');
+  setProgress('audio', 80);
+
+  stRunning('st-latency');
+  await sleep(600);
+  // Real: jack_iodelay or measure roundtrip
+  const latency = (256 / 48000 * 1000).toFixed(1);
+  const latOk = parseFloat(latency) < 10;
+  if (latOk) { stPass('st-latency', latency + ' ms'); log('ok',  `Audio: Latency ${latency}ms — within spec`); }
+  else       { stWarn('st-latency', latency + ' ms'); log('warn', `Audio: Latency ${latency}ms — consider reducing buffer size`); }
+  setProgress('audio', 100);
+
+  setCard('audio', 'pass', 'PASS');
+  log('ok', 'Audio: All audio tests passed');
+}
+
+async function testVideo() {
+  setCard('video', 'running', 'TESTING');
+  log('info', 'Video: Starting display diagnostics');
+  setStatus('running', 'Testing video outputs…');
+
+  stRunning('st-xrandr');
+  await sleep(300);
+  stPass('st-xrandr', 'Running');
+  log('ok', 'Video: X display server active on :0');
+  setProgress('video', 16);
+
+  // Real: parse xrandr --query output
+  const displays = await detectDisplays();
+
+  stRunning('st-disp1');
+  await sleep(500);
+  if (displays[0]) {
+    stPass('st-disp1', displays[0]);
+    log('ok', 'Video: Output 1 (Operator) — ' + displays[0]);
+  } else {
+    stFail('st-disp1', 'No signal');
+    log('err', 'Video: Output 1 — no display detected');
+  }
+  setProgress('video', 32);
+
+  stRunning('st-disp2');
+  await sleep(450);
+  if (displays[1]) {
+    stPass('st-disp2', displays[1]);
+    log('ok', 'Video: Output 2 (Stage) — ' + displays[1]);
+  } else {
+    stWarn('st-disp2', 'Not connected');
+    log('warn', 'Video: Output 2 — no display connected (OK if single output)');
+  }
+  setProgress('video', 48);
+
+  stRunning('st-disp3');
+  await sleep(400);
+  if (displays[2]) {
+    stPass('st-disp3', displays[2]);
+    log('ok', 'Video: Output 3 (FOH) — ' + displays[2]);
+  } else {
+    stSet('st-disp3', 'pass', 'Not used');
+    log('ok', 'Video: Output 3 — not connected (not required)');
+    totalPass++;
+    updateScore();
+  }
+  setProgress('video', 64);
+
+  stRunning('st-extend');
+  await sleep(350);
+  stPass('st-extend', 'Extended');
+  log('ok', 'Video: All displays in extend mode — no mirroring');
+  setProgress('video', 82);
+
+  stRunning('st-refresh');
+  await sleep(400);
+  const hz = displays[0] ? '60Hz' : '—';
+  stPass('st-refresh', hz);
+  log('ok', 'Video: Refresh rate ' + hz);
+  setProgress('video', 100);
+
+  setCard('video', 'pass', 'PASS');
+  log('ok', 'Video: All display tests passed');
+}
+
+async function testNetwork() {
+  setCard('net', 'running', 'TESTING');
+  log('info', 'Network: Starting device ping tests');
+  setStatus('running', 'Pinging network devices…');
+
+  stRunning('st-iface');
+  await sleep(300);
+  const iface = await getNetworkInterface();
+  stPass('st-iface', iface);
+  log('ok', 'Network: Interface ' + iface + ' active');
+  setProgress('net', 16);
+
+  // Ping each device
+  const deviceTests = [
+    { st: 'st-eos',  ...DEVICES.eos  },
+    { st: 'st-m32',  ...DEVICES.m32  },
+    { st: 'st-atem', ...DEVICES.atem },
+    { st: 'st-pp',   ...DEVICES.pp   },
+  ];
+
+  for (let i = 0; i < deviceTests.length; i++) {
+    const d = deviceTests[i];
+    stRunning(d.st);
+    const ms = await pingDevice(d.ip, d.port);
+    if (ms !== null) {
+      stPass(d.st, ms + 'ms');
+      log('ok', `Network: ${d.label} reachable — ${d.ip} (${ms}ms)`);
+    } else {
+      stFail(d.st, 'No reply');
+      log('err', `Network: ${d.label} not responding — check ${d.ip}:${d.port}`);
+    }
+    setProgress('net', 16 + (i + 1) * 14);
+    await sleep(300);
+  }
+
+  // Check output daemon
+  stRunning('st-daemon');
+  await sleep(400);
+  const daemonOk = await checkWebSocket('ws://localhost:9001');
+  if (daemonOk) { stPass('st-daemon', 'WS:9001'); log('ok',  'Network: Output daemon connected'); }
+  else          { stFail('st-daemon', 'No reply'); log('err', 'Network: Output daemon not responding'); }
+  setProgress('net', 100);
+
+  const netFails = document.querySelectorAll('#card-net .subtest.fail').length;
+  if (netFails === 0) {
+    setCard('net', 'pass', 'PASS');
+    log('ok', 'Network: All devices reachable');
+  } else {
+    setCard('net', 'fail', netFails + ' FAIL');
+    log('err', `Network: ${netFails} device(s) unreachable`);
+  }
+}
+
+// ── Hardware check stubs ────────────────────────────────────
+// In the real OS these call Electron IPC → main.js → system commands
+
+async function checkProcess(name) {
+  await sleep(50);
+  // Simulate: 90% chance running
+  return Math.random() > 0.1 ? Math.floor(1000 + Math.random() * 9000) : null;
+}
+
+async function checkUDPPort(port) {
+  await sleep(50);
+  return true;
+}
+
+async function checkUSBDMX() {
+  await sleep(100);
+  // Simulate: 70% chance USB device present
+  return Math.random() > 0.3 ? '/dev/ttyUSB0' : null;
+}
+
+async function detectDisplays() {
+  await sleep(100);
+  // Simulate detected displays
+  const resolutions = ['1920×1080', '3840×2160', '2560×1440', '1280×720'];
+  const count = 1 + Math.floor(Math.random() * 2); // 1-2 displays
+  return Array.from({ length: count }, () =>
+    resolutions[Math.floor(Math.random() * resolutions.length)]
+  );
+}
+
+async function getNetworkInterface() {
+  await sleep(50);
+  return '192.168.1.10/24';
+}
+
+async function pingDevice(ip, port) {
+  await sleep(80 + Math.random() * 120);
+  // Simulate: random ping or failure
+  // In real OS: use WebSocket to ask output daemon to TCP connect
+  if (Math.random() > 0.35) {
+    return Math.floor(1 + Math.random() * 12);
+  }
+  return null;
+}
+
+async function checkWebSocket(url) {
+  return new Promise(resolve => {
+    try {
+      const ws = new WebSocket(url);
+      const t  = setTimeout(() => { ws.close(); resolve(false); }, 1500);
+      ws.onopen  = () => { clearTimeout(t); ws.close(); resolve(true); };
+      ws.onerror = () => { clearTimeout(t); resolve(false); };
+    } catch(e) { resolve(false); }
+  });
+}
+
+// ── Main test runner ────────────────────────────────────────
+async function runAllTests() {
+  if (testRunning) return;
+  testRunning = true;
+  totalPass = totalFail = totalWarn = 0;
+
+  document.getElementById('btn-run').disabled  = true;
+  document.getElementById('btn-skip').disabled = true;
+
+  // Reset all cards
+  ['dmx','audio','video','net'].forEach(id => {
+    setCard(id, '', 'IDLE');
+    setProgress(id, 0);
+    document.querySelectorAll(`#card-${id} .subtest`).forEach(s => {
+      s.className = 'subtest';
+      s.querySelector('.st-val').textContent = '—';
+      s.querySelector('.st-dot').className = 'st-dot';
+    });
+  });
+  document.getElementById('log-wrap').innerHTML = '';
+  updateScore();
+  document.getElementById('ring-pct').textContent = '—';
+
+  setStatus('running', 'Running equipment diagnostics…');
+  startElapsed();
+  log('info', 'StageOS equipment test started');
+
+  // Run all 4 test suites in sequence
+  await testDMX();
+  await testAudio();
+  await testVideo();
+  await testNetwork();
+
+  stopElapsed();
+  testRunning = false;
+
+  const total = totalPass + totalFail + totalWarn;
+  const pct   = Math.round((totalPass / total) * 100);
+  log('info', `Test complete — ${totalPass}/${total} passed (${pct}%)`);
+
+  if (totalFail === 0) {
+    setStatus('pass', `All ${total} tests passed — system ready`);
+  } else {
+    setStatus('fail', `${totalFail} test(s) failed — review issues before show`);
+  }
+
+  document.getElementById('btn-run').disabled  = false;
+  document.getElementById('btn-skip').disabled = false;
+  document.getElementById('btn-run').textContent = '↺ Re-run Tests';
+
+  showDoneOverlay(pct, totalPass, totalFail, totalWarn);
+}
+
+// ── Overlays ───────────────────────────────────────────────
+function startFromOverlay() {
+  document.getElementById('idle-overlay').style.display = 'none';
+  runAllTests();
+}
+
+function skipToLauncher() {
+  document.getElementById('idle-overlay').style.display = 'none';
+  log('warn', 'Equipment test skipped by user');
+  // In real OS: window.location.href = 'launcher.html'
+  alert('→ Launching StageOS…\n(In the real OS this opens the main launcher)');
+}
+
+function showDoneOverlay(pct, pass, fail, warn) {
+  const overlay = document.getElementById('done-overlay');
+  overlay.style.display = 'flex';
+
+  const allGood = fail === 0;
+  document.getElementById('done-icon').textContent  = allGood ? '✅' : '⚠️';
+  document.getElementById('done-title').textContent = allGood ? 'All Systems Go' : 'Issues Detected';
+  document.getElementById('done-sub').textContent   = allGood
+    ? `All ${pass + fail + warn} checks passed. You're ready for the show.`
+    : `${fail} issue${fail>1?'s':''} found. Review the details before going live.`;
+
+  const res = document.getElementById('done-results');
+  res.innerHTML = `
+    <div class="dr-chip pass">${pass} Passed</div>
+    ${fail > 0 ? `<div class="dr-chip fail">${fail} Failed</div>` : ''}
+    ${warn > 0 ? `<div class="dr-chip warn">${warn} Warnings</div>` : ''}
+  `;
+}
+
+function closeDoneOverlay() {
+  document.getElementById('done-overlay').style.display = 'none';
+}
+
+function goToLauncher() {
+  // In real OS: window.location.href = '/opt/stageos/apps/launcher.html'
+  alert('→ Launching StageOS…\n(In the real OS this opens the main launcher)');
+}
+
+// ── Keyboard shortcuts ─────────────────────────────────────
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' || e.key === 'Escape') skipToLauncher();
+  if (e.key === ' ') { e.preventDefault(); startFromOverlay(); }
+  if (e.key === 'r' || e.key === 'R') runAllTests();
+});
+</script>
+</body>
+</html>
