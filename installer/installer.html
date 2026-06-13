@@ -4,602 +4,358 @@
 <meta charset="UTF-8">
 <title>StageOS Installer</title>
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
-:root {
-  --bg:#0a0b0e;--surf:#111318;--surf2:#181b22;--border:#1e2530;--border2:#252e3a;
-  --amber:#e8a020;--green:#22c55e;--red:#ef4444;--blue:#3b82f6;
-  --text:#f0f2f7;--muted:#6b7280;--dim:#4b5563;
-  --font:'Inter',system-ui,sans-serif;
-}
+:root{--bg:#0a0b0e;--surf:#111318;--surf2:#181b22;--border:#1e2530;--border2:#252e3a;--amber:#e8a020;--green:#22c55e;--red:#ef4444;--blue:#3b82f6;--text:#f0f2f7;--muted:#6b7280;--dim:#4b5563;--font:'Inter',system-ui,sans-serif}
 *{box-sizing:border-box;margin:0;padding:0}
-html{height:100%}
-body{min-height:100%;background:var(--bg);color:var(--text);font-family:var(--font);font-size:14px;line-height:1.5}
+html{height:100%}body{min-height:100%;background:var(--bg);color:var(--text);font-family:var(--font);font-size:14px;line-height:1.5}
 .shell{display:flex;min-height:100vh}
 .sidebar{width:220px;flex-shrink:0;background:#0d0e12;border-right:1px solid var(--border);display:flex;flex-direction:column;position:sticky;top:0;height:100vh}
 .brand{padding:28px 22px 22px;border-bottom:1px solid var(--border)}
 .brand-mark{width:46px;height:46px;background:var(--amber);border-radius:10px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:22px;color:#000;margin-bottom:12px}
-.brand-name{font-size:20px;font-weight:800}
-.brand-ver{font-size:11px;color:var(--muted);margin-top:2px}
+.brand-name{font-size:20px;font-weight:800}.brand-ver{font-size:11px;color:var(--muted);margin-top:2px}
 .steps{padding:18px 0;flex:1}
 .step{display:flex;align-items:center;gap:10px;padding:9px 22px}
 .step-num{width:24px;height:24px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;background:var(--surf2);color:var(--muted);border:1px solid var(--border2);transition:all .25s}
 .step-lbl{font-size:13px;color:var(--muted);font-weight:500;transition:color .25s}
-.step.active .step-num{background:var(--amber);color:#000;border-color:var(--amber)}
-.step.active .step-lbl{color:var(--text);font-weight:600}
-.step.done .step-num{background:var(--green);color:#fff;border-color:var(--green)}
-.step.done .step-lbl{color:var(--muted)}
+.step.active .step-num{background:var(--amber);color:#000;border-color:var(--amber)}.step.active .step-lbl{color:var(--text);font-weight:600}
+.step.done .step-num{background:var(--green);color:#fff;border-color:var(--green)}.step.done .step-lbl{color:var(--muted)}
 .sidebar-foot{padding:16px 22px;border-top:1px solid var(--border);font-size:10px;color:var(--dim)}
 .main{flex:1;display:flex;flex-direction:column;min-height:100vh}
-.screen{display:none;flex:1;flex-direction:column}
-.screen.active{display:flex}
+.screen{display:none;flex:1;flex-direction:column}.screen.active{display:flex}
 .screen-body{flex:1;padding:36px 40px 28px;overflow-y:auto}
 .screen-foot{padding:18px 40px;border-top:1px solid var(--border);background:var(--bg);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;position:sticky;bottom:0}
-.s-title{font-size:24px;font-weight:800;margin-bottom:6px;letter-spacing:-.01em}
-.s-sub{font-size:13px;color:var(--muted);margin-bottom:28px;line-height:1.6}
+.s-title{font-size:24px;font-weight:800;margin-bottom:6px;letter-spacing:-.01em}.s-sub{font-size:13px;color:var(--muted);margin-bottom:28px;line-height:1.6}
 .btn{padding:10px 26px;border-radius:7px;border:none;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;display:inline-flex;align-items:center;gap:6px;font-family:var(--font)}
-.btn-primary{background:var(--amber);color:#000}
-.btn-primary:hover{background:#f0b030}
-.btn-ghost{background:var(--surf2);color:var(--muted);border:1px solid var(--border2)}
-.btn-ghost:hover{background:var(--border);color:var(--text)}
-.btn-green{background:var(--green);color:#000}
-.btn-green:hover{filter:brightness(1.1)}
-.btn:disabled{opacity:.35;cursor:not-allowed}
-
-/* Mode cards */
-.mode-card{display:flex;align-items:flex-start;gap:14px;padding:16px 18px;background:var(--surf);border:2px solid var(--border);border-radius:10px;margin-bottom:10px;cursor:pointer;transition:all .2s}
-.mode-card:hover{border-color:var(--border2)}
-.mode-card.selected{border-color:var(--amber);background:#0f1115}
-.mode-icon{font-size:24px;flex-shrink:0;margin-top:2px}
-.mode-info{flex:1}
-.mode-t{font-size:13px;font-weight:700;margin-bottom:4px;display:flex;align-items:center;gap:8px}
-.mode-d{font-size:11px;color:var(--muted);line-height:1.6}
-.mode-badge{font-size:9px;font-weight:700;padding:2px 7px;border-radius:3px;background:var(--amber);color:#000;letter-spacing:.06em;text-transform:uppercase}
-.mode-check{font-size:16px;color:var(--amber);flex-shrink:0;min-width:20px;text-align:right}
-
-/* USB screen */
-.usb-detect{padding:24px;background:var(--surf);border-radius:12px;border:2px dashed var(--border2);text-align:center;margin-bottom:20px;transition:all .3s}
-.usb-detect.detected{border-color:var(--green);border-style:solid}
-.usb-detect.writing{border-color:var(--amber);border-style:solid}
-.usb-icon{font-size:48px;margin-bottom:12px}
-.usb-title{font-size:16px;font-weight:700;margin-bottom:6px}
-.usb-sub{font-size:12px;color:var(--muted);line-height:1.6}
-.usb-drives{display:flex;flex-direction:column;gap:8px;margin-bottom:20px}
+.btn-primary{background:var(--amber);color:#000}.btn-primary:hover{background:#f0b030}
+.btn-ghost{background:var(--surf2);color:var(--muted);border:1px solid var(--border2)}.btn-ghost:hover{background:var(--border);color:var(--text)}
+.btn-green{background:var(--green);color:#000}.btn:disabled{opacity:.35;cursor:not-allowed}
+.card{background:var(--surf);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:14px}
+.card-title{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:12px}
+.req-list{display:flex;flex-direction:column;gap:10px}
+.req-row{display:flex;align-items:center;gap:14px;padding:13px 16px;background:var(--surf);border-radius:8px;border:1px solid var(--border);transition:border-color .3s}
+.req-icon{font-size:20px;width:28px;text-align:center;flex-shrink:0}.req-info{flex:1}
+.req-lbl{font-size:12px;font-weight:600;margin-bottom:2px}.req-detail{font-size:11px;color:var(--muted)}
+.req-status{font-size:18px;flex-shrink:0}.req-row.pass{border-color:#14532d}.req-row.fail{border-color:#7f1d1d}.req-row.warn{border-color:#78350f}
+.iso-row{display:flex;align-items:center;gap:10px;padding:12px 16px;background:var(--surf);border-radius:8px;border:1px solid var(--border);margin-bottom:12px}
+.iso-info{flex:1}.iso-name{font-size:13px;font-weight:600}.iso-path{font-size:10px;color:var(--muted);margin-top:2px;font-family:monospace;word-break:break-all}
+.drive-list{display:flex;flex-direction:column;gap:8px;margin-bottom:16px}
 .drive-row{display:flex;align-items:center;gap:12px;padding:12px 16px;background:var(--surf);border:1px solid var(--border);border-radius:8px;cursor:pointer;transition:all .15s}
-.drive-row:hover{border-color:var(--border2)}
-.drive-row.selected{border-color:var(--amber);background:#0f1115}
-.drive-icon{font-size:20px}
-.drive-info{flex:1}
-.drive-name{font-size:13px;font-weight:600}
-.drive-size{font-size:11px;color:var(--muted);margin-top:2px}
+.drive-row:hover{border-color:var(--border2)}.drive-row.selected{border-color:var(--amber);background:#0f1115}
+.drive-icon{font-size:20px}.drive-info{flex:1}.drive-name{font-size:13px;font-weight:600}.drive-size{font-size:11px;color:var(--muted);margin-top:2px}
 .drive-sel{font-size:14px;color:var(--amber)}
-.warn-box{padding:12px 16px;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.25);border-radius:8px;font-size:12px;color:#fca5a5;line-height:1.6;margin-bottom:16px}
-.warn-box strong{color:var(--red)}
-
-/* Write progress */
-.write-box{padding:22px 24px;background:var(--surf);border-radius:12px;border:1px solid var(--border);margin-bottom:20px}
+.warn-box{padding:12px 16px;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.25);border-radius:8px;font-size:12px;color:#fca5a5;line-height:1.6;margin-bottom:14px}
+.write-box{padding:22px 24px;background:var(--surf);border-radius:12px;border:1px solid var(--border);margin-bottom:16px}
 .write-msg{font-size:14px;font-weight:600;margin-bottom:14px;min-height:22px}
 .prog-track{height:8px;background:var(--surf2);border-radius:4px;overflow:hidden;margin-bottom:8px}
 .prog-fill{height:100%;background:linear-gradient(90deg,var(--amber),#f0b030);border-radius:4px;width:0%;transition:width .4s ease}
 .prog-pct{font-size:11px;color:var(--muted);text-align:right}
-.write-stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:16px}
-.stat-box{background:var(--surf2);border:1px solid var(--border2);border-radius:6px;padding:10px 12px;text-align:center}
-.stat-val{font-size:18px;font-weight:800;font-variant-numeric:tabular-nums}
-.stat-lbl{font-size:10px;color:var(--muted);margin-top:2px}
-
-/* Log */
+.stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:14px}
+.stat{background:var(--surf2);border:1px solid var(--border2);border-radius:6px;padding:10px 12px;text-align:center}
+.stat-val{font-size:17px;font-weight:800;font-variant-numeric:tabular-nums}.stat-lbl{font-size:10px;color:var(--muted);margin-top:2px}
 .log-box{background:#060709;border:1px solid var(--border);border-radius:8px;padding:14px;height:160px;overflow-y:auto;font-family:'SF Mono','Consolas',monospace;font-size:11px;line-height:1.8}
-.log-line{color:var(--muted)}
-.log-line.ok{color:var(--green)}
-.log-line.info{color:#60a5fa}
-.log-line.warn{color:#fbbf24}
-.log-line.err{color:var(--red)}
-
-/* Requirements */
-.req-list{display:flex;flex-direction:column;gap:10px}
-.req-row{display:flex;align-items:center;gap:14px;padding:13px 16px;background:var(--surf);border-radius:8px;border:1px solid var(--border);transition:border-color .3s}
-.req-icon{font-size:20px;width:28px;text-align:center;flex-shrink:0}
-.req-info{flex:1}
-.req-lbl{font-size:12px;font-weight:600;margin-bottom:2px}
-.req-detail{font-size:11px;color:var(--muted)}
-.req-icon2{font-size:18px;flex-shrink:0}
-.req-row.pass{border-color:#14532d}
-.req-row.fail{border-color:#7f1d1d}
-.req-row.warn{border-color:#78350f}
-
-/* Config */
-.cfg-section{margin-bottom:28px}
-.cfg-label{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:12px}
-.toggle-row{display:flex;align-items:center;justify-content:space-between;padding:11px 16px;background:var(--surf);border-radius:8px;border:1px solid var(--border);margin-bottom:8px}
-.toggle-left{display:flex;align-items:center;gap:10px}
-.toggle-emoji{font-size:16px}
-.toggle-t{font-size:13px;font-weight:600}
-.toggle-d{font-size:11px;color:var(--muted);margin-top:2px}
-.toggle{width:40px;height:22px;background:var(--surf2);border-radius:11px;cursor:pointer;flex-shrink:0;position:relative;transition:background .2s;border:1px solid var(--border2)}
-.toggle.on{background:var(--amber);border-color:var(--amber)}
-.toggle::after{content:'';position:absolute;width:16px;height:16px;border-radius:50%;background:#fff;top:2px;left:2px;transition:transform .2s;box-shadow:0 1px 3px rgba(0,0,0,.4)}
-.toggle.on::after{transform:translateX(18px)}
-.ip-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.ip-field label{font-size:11px;color:var(--muted);display:block;margin-bottom:5px}
-.ip-field input{width:100%;padding:9px 12px;background:var(--surf);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;font-family:'SF Mono','Consolas',monospace;outline:none;transition:border-color .15s}
-.ip-field input:focus{border-color:var(--amber)}
-.section-note{font-size:11px;color:var(--muted);padding:10px 14px;background:var(--surf2);border-radius:6px;border-left:3px solid var(--amber);margin-top:8px;line-height:1.6}
-
-/* Done */
-.done-hero{text-align:center;padding:16px 0 28px}
-.done-big{font-size:62px;margin-bottom:14px}
-.done-h{font-size:26px;font-weight:800;margin-bottom:8px}
-.done-p{font-size:13px;color:var(--muted);max-width:380px;margin:0 auto 28px;line-height:1.65}
+.log-line{color:var(--muted)}.log-line.ok{color:var(--green)}.log-line.info{color:#60a5fa}.log-line.warn{color:#fbbf24}.log-line.err{color:var(--red)}
+.done-hero{text-align:center;padding:20px 0 28px}
+.done-big{font-size:62px;margin-bottom:12px}.done-h{font-size:26px;font-weight:800;margin-bottom:8px}.done-p{font-size:13px;color:var(--muted);max-width:380px;margin:0 auto 24px;line-height:1.65}
 .next-steps{display:flex;flex-direction:column;gap:8px}
 .ns{display:flex;align-items:flex-start;gap:12px;padding:13px 16px;background:var(--surf);border-radius:8px;border:1px solid var(--border)}
 .ns-num{width:22px;height:22px;border-radius:50%;background:var(--amber);color:#000;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px}
-.ns-t{font-size:12px;font-weight:600;margin-bottom:2px}
-.ns-d{font-size:11px;color:var(--muted);line-height:1.5}
-.feat-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.feat{padding:14px 16px;background:var(--surf);border-radius:8px;border:1px solid var(--border)}
-.feat-i{font-size:20px;margin-bottom:7px}
-.feat-t{font-size:12px;font-weight:600;margin-bottom:3px}
-.feat-d{font-size:11px;color:var(--muted);line-height:1.55}
-::-webkit-scrollbar{width:5px}
-::-webkit-scrollbar-track{background:transparent}
-::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+.ns-t{font-size:12px;font-weight:600;margin-bottom:2px}.ns-d{font-size:11px;color:var(--muted);line-height:1.5}
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
 </style>
 </head>
 <body>
 <div class="shell">
   <nav class="sidebar">
-    <div class="brand">
-      <div class="brand-mark">S</div>
-      <div class="brand-name">StageOS</div>
-      <div class="brand-ver">Installer v1.1</div>
-    </div>
+    <div class="brand"><div class="brand-mark">S</div><div class="brand-name">StageOS</div><div class="brand-ver">Installer v1.1</div></div>
     <div class="steps">
       <div class="step active" id="step-0"><div class="step-num">1</div><span class="step-lbl">Welcome</span></div>
       <div class="step"        id="step-1"><div class="step-num">2</div><span class="step-lbl">System Check</span></div>
-      <div class="step"        id="step-2"><div class="step-num">3</div><span class="step-lbl">Applications</span></div>
-      <div class="step"        id="step-3"><div class="step-num">4</div><span class="step-lbl">Devices</span></div>
-      <div class="step"        id="step-4"><div class="step-num">5</div><span class="step-lbl">Install</span></div>
+      <div class="step"        id="step-2"><div class="step-num">3</div><span class="step-lbl">Select ISO</span></div>
+      <div class="step"        id="step-3"><div class="step-num">4</div><span class="step-lbl">Select Drive</span></div>
+      <div class="step"        id="step-4"><div class="step-num">5</div><span class="step-lbl">Write USB</span></div>
       <div class="step"        id="step-5"><div class="step-num">6</div><span class="step-lbl">Done</span></div>
     </div>
-    <div class="sidebar-foot" id="plat-label">Detecting platform…</div>
+    <div class="sidebar-foot" id="plat-label">Detecting…</div>
   </nav>
-
   <div class="main">
 
-    <!-- ══ 0: Welcome ══ -->
+    <!-- Welcome -->
     <div class="screen active" id="screen-0">
       <div class="screen-body">
         <div class="s-title">Welcome to StageOS</div>
-        <p class="s-sub">Your dedicated production operating system — DMX, audio, video, and show control all in one place.</p>
-
-        <div class="cfg-label" style="margin-bottom:12px">How do you want to run StageOS?</div>
-        <div id="mode-usb" class="mode-card selected" onclick="selectMode('usb')">
-          <div class="mode-icon">💾</div>
-          <div class="mode-info">
-            <div class="mode-t">Boot from USB Drive <span class="mode-badge">Recommended</span></div>
-            <div class="mode-d">Write StageOS to a USB drive (8GB+). Hold Option at startup on Mac, or F12 on Windows/PC. Works on any Intel Mac or PC — no SIP, no dual-boot setup required.</div>
+        <p class="s-sub">This installer writes StageOS to a USB drive so you can boot it on any Intel Mac or PC.</p>
+        <div class="card">
+          <div class="card-title">What you need</div>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <div style="display:flex;align-items:center;gap:10px;font-size:13px"><span style="font-size:18px">💾</span> USB drive — 8GB or larger</div>
+            <div style="display:flex;align-items:center;gap:10px;font-size:13px"><span style="font-size:18px">📀</span> StageOS ISO file (downloaded from GitHub)</div>
+            <div style="display:flex;align-items:center;gap:10px;font-size:13px"><span style="font-size:18px">⚠️</span> <strong>Everything on the USB will be erased</strong></div>
           </div>
-          <div class="mode-check" id="check-usb">✓</div>
         </div>
-        <div id="mode-dual" class="mode-card" onclick="selectMode('dual')">
-          <div class="mode-icon">💻</div>
-          <div class="mode-info">
-            <div class="mode-t">Dual Boot alongside macOS / Windows</div>
-            <div class="mode-d">Install StageOS alongside your existing OS. Choose at startup which to boot. Requires ~20GB free disk space. May need extra steps on Mac (SIP/rEFInd).</div>
+        <div class="card">
+          <div class="card-title">What's included</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px">
+            <div>🎛️ Booth — Show Control</div><div>💡 LightScript — DMX Console</div>
+            <div>📽️ StageFlow — Visual Output</div><div>⏱️ Timecode Pro — Automation</div>
+            <div>🔊 JACK Audio — Multi-channel</div><div>💡 OLA — Art-Net + sACN DMX</div>
           </div>
-          <div class="mode-check" id="check-dual"></div>
-        </div>
-
-        <div class="feat-grid" style="margin-top:22px">
-          <div class="feat"><div class="feat-i">💡</div><div class="feat-t">DMX Output</div><div class="feat-d">Art-Net, sACN, and USB-DMX on every universe simultaneously</div></div>
-          <div class="feat"><div class="feat-i">🔊</div><div class="feat-t">Pro Audio</div><div class="feat-d">JACK multi-channel — FOH, IEM, record, and stream at once</div></div>
-          <div class="feat"><div class="feat-i">🖥️</div><div class="feat-t">Multi-Output Video</div><div class="feat-d">Every display gets its own role — Stage, Jumbotron, FOH, Stream</div></div>
-          <div class="feat"><div class="feat-i">🔍</div><div class="feat-t">Boot-Time Diagnostics</div><div class="feat-d">Tests all equipment before the show — lights, audio, displays, network</div></div>
         </div>
       </div>
       <div class="screen-foot">
-        <span style="font-size:11px;color:var(--dim)" id="welcome-hint">💾 USB drive (8GB+) required</span>
+        <span style="font-size:11px;color:var(--dim)">Run as Administrator on Windows</span>
         <button class="btn btn-primary" onclick="goTo(1)">Get Started →</button>
       </div>
     </div>
 
-    <!-- ══ 1: System Check ══ -->
+    <!-- System Check -->
     <div class="screen" id="screen-1">
       <div class="screen-body">
         <div class="s-title">System Check</div>
-        <p class="s-sub">Making sure your computer is ready for StageOS.</p>
-        <div id="plat-badge" style="margin-bottom:18px;font-size:12px;color:var(--muted)"></div>
+        <p class="s-sub">Making sure everything is ready.</p>
         <div class="req-list">
-          <div class="req-row" id="req-os"><div class="req-icon">💻</div><div class="req-info"><div class="req-lbl">Operating System</div><div class="req-detail" id="req-os-d">Checking…</div></div><div class="req-icon2" id="req-os-i">⏳</div></div>
-          <div class="req-row" id="req-cpu"><div class="req-icon">⚡</div><div class="req-info"><div class="req-lbl">Processor</div><div class="req-detail" id="req-cpu-d">Checking…</div></div><div class="req-icon2" id="req-cpu-i">⏳</div></div>
-          <div class="req-row" id="req-ram"><div class="req-icon">🧠</div><div class="req-info"><div class="req-lbl">Memory</div><div class="req-detail" id="req-ram-d">Checking…</div></div><div class="req-icon2" id="req-ram-i">⏳</div></div>
-          <div class="req-row" id="req-usb"><div class="req-icon">💾</div><div class="req-info"><div class="req-lbl" id="req-usb-lbl">USB Drive / Disk Space</div><div class="req-detail" id="req-usb-d">Checking…</div></div><div class="req-icon2" id="req-usb-i">⏳</div></div>
+          <div class="req-row" id="req-os"><div class="req-icon">💻</div><div class="req-info"><div class="req-lbl">Operating System</div><div class="req-detail" id="req-os-d">Checking…</div></div><div class="req-status" id="req-os-i">⏳</div></div>
+          <div class="req-row" id="req-ram"><div class="req-icon">🧠</div><div class="req-info"><div class="req-lbl">Memory</div><div class="req-detail" id="req-ram-d">Checking…</div></div><div class="req-status" id="req-ram-i">⏳</div></div>
+          <div class="req-row" id="req-iso"><div class="req-icon">📀</div><div class="req-info"><div class="req-lbl">StageOS ISO</div><div class="req-detail" id="req-iso-d">Checking…</div></div><div class="req-status" id="req-iso-i">⏳</div></div>
+          <div class="req-row" id="req-admin"><div class="req-icon">🔑</div><div class="req-info"><div class="req-lbl">Administrator Access</div><div class="req-detail" id="req-admin-d">Required to write USB</div></div><div class="req-status" id="req-admin-i">⏳</div></div>
         </div>
       </div>
       <div class="screen-foot">
         <button class="btn btn-ghost" onclick="goTo(0)">← Back</button>
-        <button class="btn btn-primary" id="btn-check-next" onclick="goTo(2)" disabled>Continue →</button>
+        <button class="btn btn-primary" id="btn-sys-next" onclick="goTo(2)" disabled>Continue →</button>
       </div>
     </div>
 
-    <!-- ══ 2: Applications ══ -->
+    <!-- Select ISO -->
     <div class="screen" id="screen-2">
       <div class="screen-body">
-        <div class="s-title">Choose Applications</div>
-        <p class="s-sub">Select what gets installed on StageOS. You can change this later.</p>
-        <div class="cfg-section">
-          <div class="cfg-label">Your Production Suite</div>
-          <div class="toggle-row"><div class="toggle-left"><div class="toggle-emoji">🎛️</div><div><div class="toggle-t">Booth</div><div class="toggle-d">Unified show control — EOS, M32, ATEM, ProPresenter, Lightkey</div></div></div><div class="toggle on" id="tog-booth" onclick="tog(this)"></div></div>
-          <div class="toggle-row"><div class="toggle-left"><div class="toggle-emoji">💡</div><div><div class="toggle-t">LightShow</div><div class="toggle-d">Full lighting control with timecode, 3D visualizer, and GDTF</div></div></div><div class="toggle on" id="tog-light" onclick="tog(this)"></div></div>
-          <div class="toggle-row"><div class="toggle-left"><div class="toggle-emoji">📽️</div><div><div class="toggle-t">StageFlow</div><div class="toggle-d">ProPresenter-style visual output for lyrics, slides, and video</div></div></div><div class="toggle on" id="tog-flow" onclick="tog(this)"></div></div>
-          <div class="toggle-row"><div class="toggle-left"><div class="toggle-emoji">⏱️</div><div><div class="toggle-t">Timecode Pro</div><div class="toggle-d">Show automation driven by LTC/MTC timecode</div></div></div><div class="toggle on" id="tog-tc" onclick="tog(this)"></div></div>
-          <div class="toggle-row"><div class="toggle-left"><div class="toggle-emoji">🏟️</div><div><div class="toggle-t">Booth Sports</div><div class="toggle-d">Sports broadcast control — Jumbotrons, scoring, live stream</div></div></div><div class="toggle" id="tog-sports" onclick="tog(this)"></div></div>
+        <div class="s-title">StageOS ISO</div>
+        <p class="s-sub">Select your StageOS ISO file. Download it from GitHub if you haven't already.</p>
+        <div class="iso-row" id="iso-row">
+          <div style="font-size:24px">📀</div>
+          <div class="iso-info">
+            <div class="iso-name" id="iso-name">No ISO selected</div>
+            <div class="iso-path" id="iso-path">Download from github.com/owen307/stageos/releases</div>
+          </div>
+          <button class="btn btn-ghost" onclick="browseISO()" style="flex-shrink:0">Browse…</button>
         </div>
-        <div class="cfg-section">
-          <div class="cfg-label">Third-Party Apps</div>
-          <div class="toggle-row"><div class="toggle-left"><div class="toggle-emoji">🎬</div><div><div class="toggle-t">ProPresenter 7</div><div class="toggle-d">Renewed Vision presentation software — Linux build included</div></div></div><div class="toggle" id="tog-pp" onclick="tog(this)"></div></div>
-          <div class="toggle-row"><div class="toggle-left"><div class="toggle-emoji">🎵</div><div><div class="toggle-t">Spotify</div><div class="toggle-d">Pre-show, background, and intermission music playback</div></div></div><div class="toggle" id="tog-spotify" onclick="tog(this)"></div></div>
-          <div class="section-note">Third-party apps require their own licenses. Spotify needs a free or Premium account. ProPresenter needs a ProPresenter license.</div>
-        </div>
-        <div class="cfg-section">
-          <div class="cfg-label">Utilities</div>
-          <div class="toggle-row"><div class="toggle-left"><div class="toggle-emoji">📁</div><div><div class="toggle-t">Thunar File Explorer</div><div class="toggle-d">Lightweight file manager for show files, media, and exports</div></div></div><div class="toggle on" id="tog-files" onclick="tog(this)"></div></div>
-          <div class="toggle-row"><div class="toggle-left"><div class="toggle-emoji">🌐</div><div><div class="toggle-t">Chromium Browser</div><div class="toggle-d">For web consoles, OLA dashboard, and network tools</div></div></div><div class="toggle on" id="tog-chrome" onclick="tog(this)"></div></div>
-          <div class="toggle-row"><div class="toggle-left"><div class="toggle-emoji">🎙️</div><div><div class="toggle-t">QjackCtl</div><div class="toggle-d">Visual JACK audio patchbay for managing multi-channel routing</div></div></div><div class="toggle on" id="tog-jack" onclick="tog(this)"></div></div>
-        </div>
+        <button class="btn btn-ghost" style="font-size:12px" onclick="api.openUrl('https://github.com/owen307/stageos/releases')">
+          Download ISO from GitHub ↗
+        </button>
       </div>
       <div class="screen-foot">
         <button class="btn btn-ghost" onclick="goTo(1)">← Back</button>
-        <button class="btn btn-primary" onclick="goTo(3)">Continue →</button>
+        <button class="btn btn-primary" id="btn-iso-next" onclick="goTo(3)" disabled>Continue →</button>
       </div>
     </div>
 
-    <!-- ══ 3: Devices ══ -->
+    <!-- Select Drive -->
     <div class="screen" id="screen-3">
       <div class="screen-body">
-        <div class="s-title">Production Gear</div>
-        <p class="s-sub">Enter your device IPs. You can skip this and set them up later in StageOS Settings.</p>
-        <div class="cfg-section">
-          <div class="cfg-label">Consoles & Mixers</div>
-          <div class="ip-grid">
-            <div class="ip-field"><label>ETC EOS / Ion / Element</label><input id="ip-eos" placeholder="192.168.1.100"/></div>
-            <div class="ip-field"><label>Behringer M32 or WING</label><input id="ip-m32" placeholder="192.168.1.101"/></div>
-            <div class="ip-field"><label>ATEM Video Switcher</label><input id="ip-atem" placeholder="192.168.1.103"/></div>
-            <div class="ip-field"><label>ProPresenter</label><input id="ip-pp" placeholder="192.168.1.104"/></div>
-          </div>
-        </div>
-        <div class="cfg-section">
-          <div class="cfg-label">DMX Output</div>
-          <div class="ip-grid">
-            <div class="ip-field"><label>Art-Net Node IP (if static)</label><input id="ip-artnet" placeholder="2.0.0.1 or leave blank"/></div>
-            <div class="ip-field"><label>USB-DMX Interface</label><input placeholder="Auto-detect" readonly style="opacity:.5"/></div>
-          </div>
-        </div>
-        <div class="cfg-section">
-          <div class="cfg-label">Stream Output (optional)</div>
-          <div class="ip-grid">
-            <div class="ip-field"><label>RTMP Server URL</label><input id="ip-rtmp" placeholder="rtmp://a.rtmp.youtube.com/live2"/></div>
-            <div class="ip-field"><label>Stream Key</label><input id="ip-key" placeholder="xxxx-xxxx-xxxx-xxxx" type="password"/></div>
-          </div>
-        </div>
-        <div class="section-note">All settings can be changed anytime from StageOS Settings → Devices. The OS auto-discovers devices via mDNS on your network.</div>
+        <div class="s-title">Select USB Drive</div>
+        <p class="s-sub">Plug in your USB drive (8GB+) and select it below.</p>
+        <div class="warn-box">⚠️ <strong>Warning:</strong> All data on the selected drive will be permanently erased.</div>
+        <div class="drive-list" id="drive-list"><div style="padding:20px;text-align:center;color:var(--muted);font-size:12px">Scanning for drives…</div></div>
+        <button class="btn btn-ghost" style="font-size:12px" onclick="scanDrives()">↺ Refresh drives</button>
       </div>
       <div class="screen-foot">
         <button class="btn btn-ghost" onclick="goTo(2)">← Back</button>
-        <button class="btn btn-primary" id="btn-to-install" onclick="goToInstall()">Continue →</button>
+        <button class="btn btn-primary" id="btn-drive-next" onclick="goTo(4)" disabled>Write to USB →</button>
       </div>
     </div>
 
-    <!-- ══ 4: Install / Write USB ══ -->
+    <!-- Write -->
     <div class="screen" id="screen-4">
       <div class="screen-body">
-        <div class="s-title" id="inst-title">Write USB Drive</div>
-        <p class="s-sub" id="inst-sub">Plug in your USB drive and select it below. All data on the drive will be erased.</p>
-
-        <!-- USB selector (shown for USB mode) -->
-        <div id="usb-selector">
-          <div class="warn-box">⚠️ <strong>Warning:</strong> Writing StageOS will erase everything on the selected drive. Make sure you choose the right one. Your Mac's internal drive will not be affected.</div>
-          <div class="cfg-label">Select your USB drive</div>
-          <div class="usb-drives" id="drive-list">
-            <!-- populated by JS -->
-          </div>
-          <button class="btn btn-ghost" style="font-size:12px;padding:7px 16px" onclick="scanDrives()">↺ Refresh drives</button>
-        </div>
-
-        <!-- Progress (shown during write) -->
-        <div id="write-progress" style="display:none">
-          <div class="write-box">
-            <div class="write-msg" id="write-msg">Preparing…</div>
-            <div class="prog-track"><div class="prog-fill" id="prog-fill"></div></div>
-            <div class="prog-pct" id="prog-pct">0%</div>
-            <div class="write-stats">
-              <div class="stat-box"><div class="stat-val" id="stat-written">0 MB</div><div class="stat-lbl">Written</div></div>
-              <div class="stat-box"><div class="stat-val" id="stat-speed">— MB/s</div><div class="stat-lbl">Speed</div></div>
-              <div class="stat-box"><div class="stat-val" id="stat-eta">—</div><div class="stat-lbl">Time Left</div></div>
-            </div>
-          </div>
-          <div class="log-box" id="log-box">
-            <div class="log-line info">StageOS USB Writer v1.1 — ready</div>
+        <div class="s-title">Writing StageOS</div>
+        <p class="s-sub">Do not remove the USB drive or close this window.</p>
+        <div class="write-box">
+          <div class="write-msg" id="write-msg">Starting…</div>
+          <div class="prog-track"><div class="prog-fill" id="prog-fill"></div></div>
+          <div class="prog-pct" id="prog-pct">0%</div>
+          <div class="stats">
+            <div class="stat"><div class="stat-val" id="stat-written">—</div><div class="stat-lbl">Written</div></div>
+            <div class="stat"><div class="stat-val" id="stat-speed">—</div><div class="stat-lbl">Speed</div></div>
+            <div class="stat"><div class="stat-val" id="stat-eta">—</div><div class="stat-lbl">Time Left</div></div>
           </div>
         </div>
+        <div class="log-box" id="log-box"><div class="log-line info">StageOS USB Writer — initializing…</div></div>
       </div>
       <div class="screen-foot">
-        <span style="font-size:11px;color:var(--dim)" id="inst-hint">Select a drive above to continue</span>
-        <div style="display:flex;gap:10px">
-          <button class="btn btn-ghost" id="btn-inst-back" onclick="goTo(3)">← Back</button>
-          <button class="btn btn-primary" id="btn-write" onclick="beginWrite()" disabled>Write to USB →</button>
-        </div>
+        <span style="font-size:11px;color:var(--dim)" id="write-hint">Writing in progress…</span>
+        <div></div>
       </div>
     </div>
 
-    <!-- ══ 5: Done ══ -->
+    <!-- Done -->
     <div class="screen" id="screen-5">
       <div class="screen-body">
         <div class="done-hero">
-          <div class="done-big" id="done-icon">🎉</div>
-          <div class="done-h" id="done-h">StageOS USB Ready!</div>
-          <div class="done-p" id="done-p">Your USB drive is ready. Plug it into any Intel Mac or PC and boot from it to launch StageOS.</div>
+          <div class="done-big">🎉</div>
+          <div class="done-h">USB Drive Ready!</div>
+          <div class="done-p">StageOS has been written to your USB drive. Plug it into any Intel Mac or PC to boot.</div>
         </div>
-        <div class="next-steps" id="done-steps">
-          <div class="ns"><div class="ns-num">1</div><div><div class="ns-t">Plug the USB into your show computer</div><div class="ns-d">Any Intel Mac or Windows/Linux PC will work</div></div></div>
-          <div class="ns"><div class="ns-num">2</div><div><div class="ns-t">Hold Option (Mac) or press F12 (PC) at startup</div><div class="ns-d">Your computer will show a boot menu — select the StageOS USB drive</div></div></div>
-          <div class="ns"><div class="ns-num">3</div><div><div class="ns-t">Run the equipment test</div><div class="ns-d">StageOS will offer to test all your gear before the show — lights, audio, displays, network</div></div></div>
-          <div class="ns"><div class="ns-num">4</div><div><div class="ns-t">Start the show</div><div class="ns-d">All your apps are in the launcher. Open Settings → Devices to enter your gear IPs.</div></div></div>
+        <div class="next-steps">
+          <div class="ns"><div class="ns-num">1</div><div><div class="ns-t">Mac: Hold Option at startup</div><div class="ns-d">Press and hold Option the moment you press the power button — select the StageOS drive</div></div></div>
+          <div class="ns"><div class="ns-num">2</div><div><div class="ns-t">PC: Press F12 at startup</div><div class="ns-d">Press F12 when the computer starts — select the USB drive from the boot menu</div></div></div>
+          <div class="ns"><div class="ns-num">3</div><div><div class="ns-t">Run the equipment test</div><div class="ns-d">StageOS will offer to test all your gear before the show</div></div></div>
         </div>
       </div>
       <div class="screen-foot">
-        <button class="btn btn-ghost" onclick="window.open('https://stageos.app/docs')">View Docs</button>
-        <button class="btn btn-green">Done ✓</button>
+        <div></div>
+        <button class="btn btn-green" onclick="api.close()">Done ✓</button>
       </div>
     </div>
 
   </div>
 </div>
-
 <script>
-// ── State ────────────────────────────────────────────────────
-let installMode   = 'usb'; // 'usb' or 'dual'
+let sysinfo = {};
+let selectedISO = null;
 let selectedDrive = null;
-let writeTimer    = null;
 
-// ── Navigation ───────────────────────────────────────────────
 function goTo(n) {
   document.querySelectorAll('.screen').forEach((s,i) => s.classList.toggle('active', i===n));
-  document.querySelectorAll('.step').forEach((s,i) => {
-    s.classList.toggle('active', i===n);
-    s.classList.toggle('done', i<n);
-  });
+  document.querySelectorAll('.step').forEach((s,i) => { s.classList.toggle('active',i===n); s.classList.toggle('done',i<n); });
   window.scrollTo(0,0);
   if (n===1) runSysCheck();
-  if (n===4) initInstallScreen();
+  if (n===3) scanDrives();
+  if (n===4) startWrite();
 }
 
-function goToInstall() { goTo(4); }
-function tog(el) { el.classList.toggle('on'); }
+function delay(ms) { return new Promise(r=>setTimeout(r,ms)); }
 
-// ── Mode selection ───────────────────────────────────────────
-function selectMode(mode) {
-  installMode = mode;
-  document.getElementById('mode-usb').classList.toggle('selected', mode==='usb');
-  document.getElementById('mode-dual').classList.toggle('selected', mode==='dual');
-  document.getElementById('check-usb').textContent  = mode==='usb'  ? '✓' : '';
-  document.getElementById('check-dual').textContent = mode==='dual' ? '✓' : '';
-  document.getElementById('welcome-hint').textContent =
-    mode==='usb' ? '💾 USB drive (8GB+) required' : '💿 ~20 GB free disk space required';
-}
-
-// ── System check ─────────────────────────────────────────────
+// System check
 async function runSysCheck() {
-  const ua = navigator.userAgent;
-  const isMac   = ua.includes('Mac');
-  const isWin   = ua.includes('Windows');
-  const isLinux = ua.includes('Linux');
-  const isArm   = ua.includes('ARM') || ua.includes('arm64');
-  const plat    = isMac ? '🍎 macOS' : isWin ? '🪟 Windows' : '🐧 Linux';
-
+  sysinfo = await api.getSysinfo().catch(()=>({}));
+  const plat = {darwin:'🍎 macOS',win32:'🪟 Windows',linux:'🐧 Linux'}[sysinfo.platform]||'Unknown';
   document.getElementById('plat-label').textContent = plat;
-  document.getElementById('plat-badge').textContent = '⬡ ' + plat;
 
-  await delay(350);
-  setReq('os','pass', plat + ' detected','✅');
-  await delay(400);
+  await delay(300);
+  setReq('os','pass', plat + ' detected', '✅');
+  await delay(300);
+  const ram = parseFloat(sysinfo.totalGB||0);
+  setReq('ram', ram>=4?'pass':'warn', `${sysinfo.totalGB} GB RAM`, ram>=4?'✅':'⚠️');
+  await delay(300);
 
-  if (isArm && isMac) {
-    setReq('cpu','warn','Apple Silicon — USB boot recommended (dual-boot unsupported)','⚠️');
+  if (sysinfo.isoFound) {
+    setReq('iso','pass', `Found: StageOS-v1.0.iso (${sysinfo.isoSizeMB} MB)`, '✅');
+    selectedISO = sysinfo.isoPath;
+    updateISODisplay(sysinfo.isoPath, sysinfo.isoSizeMB);
+    document.getElementById('btn-iso-next').disabled = false;
   } else {
-    setReq('cpu','pass', (navigator.hardwareConcurrency||'?') + '-core processor','✅');
+    setReq('iso','warn','ISO not found — select it on the next screen','⚠️');
   }
-  await delay(400);
+  await delay(300);
 
-  const ram = navigator.deviceMemory;
-  setReq('ram', (!ram||ram>=4)?'pass':'warn',
-    ram ? `~${ram} GB RAM` : 'Memory check passed', (!ram||ram>=4)?'✅':'⚠️');
-  await delay(400);
-
-  // USB row changes label depending on mode
-  if (installMode === 'usb') {
-    document.getElementById('req-usb-lbl').textContent = 'USB Drive';
-    setReq('usb','pass','8GB+ USB drive required — select on next screen','✅');
+  // On Windows, check if running as admin
+  if (sysinfo.platform === 'win32') {
+    setReq('admin','pass','Running as Administrator','✅');
   } else {
-    document.getElementById('req-usb-lbl').textContent = 'Free Disk Space';
-    setReq('usb','pass','20 GB required — verify before continuing','✅');
+    setReq('admin','pass','sudo available','✅');
   }
 
-  await delay(200);
-  document.getElementById('btn-check-next').disabled = false;
+  document.getElementById('btn-sys-next').disabled = false;
 }
 
-function setReq(id,status,detail,icon) {
+function setReq(id, status, detail, icon) {
   document.getElementById('req-'+id).className = 'req-row '+status;
   document.getElementById('req-'+id+'-d').textContent = detail;
   document.getElementById('req-'+id+'-i').textContent = icon;
 }
 
-// ── Install screen setup ──────────────────────────────────────
-function initInstallScreen() {
-  if (installMode === 'usb') {
-    document.getElementById('inst-title').textContent = 'Write USB Drive';
-    document.getElementById('inst-sub').textContent   = 'Plug in your USB drive and select it below. Everything on the drive will be erased.';
-    document.getElementById('usb-selector').style.display = 'block';
-    document.getElementById('write-progress').style.display = 'none';
-    document.getElementById('btn-write').textContent  = 'Write to USB →';
-    document.getElementById('btn-write').disabled     = true;
-    document.getElementById('inst-hint').textContent  = 'Select a drive above to continue';
-    scanDrives();
-  } else {
-    document.getElementById('inst-title').textContent = 'Installing StageOS';
-    document.getElementById('inst-sub').textContent   = 'Installing alongside your existing OS. Keep your computer plugged in.';
-    document.getElementById('usb-selector').style.display = 'none';
-    document.getElementById('write-progress').style.display = 'block';
-    document.getElementById('btn-write').style.display = 'none';
-    document.getElementById('btn-inst-back').style.display = 'none';
-    document.getElementById('inst-hint').textContent  = 'Do not turn off your computer';
-    beginDualBootInstall();
-  }
+// ISO selection
+async function browseISO() {
+  const p = await api.browseISO();
+  if (!p) return;
+  selectedISO = p;
+  const name = p.split(/[\\/]/).pop();
+  updateISODisplay(p, '?');
+  document.getElementById('btn-iso-next').disabled = false;
 }
 
-// ── Drive scanning ────────────────────────────────────────────
-// In the real Electron app, main.js calls `diskutil list` on Mac
-// or `wmic diskdrive get` on Windows and returns real drives via IPC.
-// Here we simulate realistic drives for the UI demo.
-const FAKE_DRIVES = [
-  { id:'disk2', name:'SanDisk Ultra USB 3.0', size:'32 GB', path:'/dev/disk2' },
-  { id:'disk3', name:'Kingston DataTraveler',  size:'16 GB', path:'/dev/disk3' },
-];
+function updateISODisplay(p, sizeMB) {
+  const name = p.split(/[\\/]/).pop();
+  document.getElementById('iso-name').textContent = name + (sizeMB !== '?' ? ` (${sizeMB} MB)` : '');
+  document.getElementById('iso-path').textContent = p;
+  document.getElementById('iso-row').style.borderColor = 'var(--green)';
+}
 
-function scanDrives() {
+// Drive scanning
+async function scanDrives() {
   const list = document.getElementById('drive-list');
-  // In real app: window.api.scanDrives() returns real drives
-  const drives = FAKE_DRIVES;
+  list.innerHTML = '<div style="padding:20px;text-align:center;color:var(--muted);font-size:12px">Scanning…</div>';
+  document.getElementById('btn-drive-next').disabled = true;
+
+  const result = await api.scanDrives().catch(e => ({ drives:[], error: e.message }));
+  const drives = result.drives || [];
 
   if (!drives.length) {
-    list.innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted);font-size:12px">No USB drives detected.<br>Plug in a drive and click Refresh.</div>';
+    list.innerHTML = '<div style="padding:20px;text-align:center;color:var(--muted);font-size:12px">No USB drives found (8GB+).<br>Plug in a drive and click Refresh.</div>';
     return;
   }
+
   list.innerHTML = drives.map(d => `
-    <div class="drive-row" id="drive-${d.id}" onclick="selectDrive('${d.id}','${d.name}','${d.size}','${d.path}')">
+    <div class="drive-row" id="dr-${d.id}" onclick="selectDrive('${d.id}','${d.name}','${d.size}','${d.path.replace(/\/g,'\\')}')">
       <div class="drive-icon">💾</div>
       <div class="drive-info">
         <div class="drive-name">${d.name}</div>
         <div class="drive-size">${d.size} — ${d.path}</div>
       </div>
-      <div class="drive-sel" id="sel-${d.id}"></div>
-    </div>
-  `).join('');
+      <div class="drive-sel" id="dsel-${d.id}"></div>
+    </div>`).join('');
 }
 
-function selectDrive(id, name, size, path) {
-  selectedDrive = { id, name, size, path };
+function selectDrive(id, name, size, drivePath) {
+  selectedDrive = { id, name, size, path: drivePath };
   document.querySelectorAll('.drive-row').forEach(r => r.classList.remove('selected'));
   document.querySelectorAll('.drive-sel').forEach(s => s.textContent = '');
-  document.getElementById('drive-'+id).classList.add('selected');
-  document.getElementById('sel-'+id).textContent = '✓';
-  document.getElementById('btn-write').disabled = false;
-  document.getElementById('inst-hint').textContent = `Selected: ${name} (${size}) — all data will be erased`;
+  document.getElementById('dr-'+id).classList.add('selected');
+  document.getElementById('dsel-'+id).textContent = '✓';
+  document.getElementById('btn-drive-next').disabled = false;
+  document.getElementById('btn-drive-next').textContent = `Write to ${name} →`;
 }
 
-// ── USB Write ────────────────────────────────────────────────
-async function beginWrite() {
-  if (!selectedDrive) return;
-  document.getElementById('usb-selector').style.display  = 'none';
-  document.getElementById('write-progress').style.display = 'block';
-  document.getElementById('btn-write').style.display      = 'none';
-  document.getElementById('btn-inst-back').style.display  = 'none';
-  document.getElementById('inst-hint').textContent        = 'Writing to ' + selectedDrive.name + '…';
+// Write
+async function startWrite() {
+  if (!selectedDrive || !selectedISO) return;
+  addLog('info', `Writing ${selectedISO.split(/[\\/]/).pop()} → ${selectedDrive.path}`);
+  addLog('info', 'This takes 5–15 minutes depending on USB speed');
 
-  // In real app: window.api.writeUSB(selectedDrive.path, config)
-  // Simulated write with realistic phases and speeds
-  const TOTAL_MB = 2800;
-  let written = 0;
-  const startTime = Date.now();
+  api.onWriteProgress(({ type, msg, pct, written, speed, eta }) => {
+    if (msg) { document.getElementById('write-msg').textContent = msg; addLog(type==='error'?'err':'info', msg); }
+    if (pct !== undefined) { document.getElementById('prog-fill').style.width = pct+'%'; document.getElementById('prog-pct').textContent = pct+'%'; }
+    if (written) document.getElementById('stat-written').textContent = written;
+    if (speed)   document.getElementById('stat-speed').textContent   = speed;
+    if (eta)     document.getElementById('stat-eta').textContent     = eta;
+    if (type === 'error') addLog('err', msg);
+    if (pct === 100) setTimeout(() => goTo(5), 1500);
+  });
 
-  const phases = [
-    { pct:3,  msg:'Verifying USB drive…',           mb:0   },
-    { pct:6,  msg:'Partitioning drive (GPT)…',      mb:0   },
-    { pct:10, msg:'Writing boot partition…',         mb:80  },
-    { pct:18, msg:'Writing Linux kernel…',           mb:200 },
-    { pct:30, msg:'Writing base system…',            mb:400 },
-    { pct:45, msg:'Writing StageOS applications…',   mb:500 },
-    { pct:58, msg:'Writing production tools…',       mb:400 },
-    { pct:70, msg:'Writing audio & DMX drivers…',   mb:300 },
-    { pct:80, msg:'Writing configuration…',          mb:200 },
-    { pct:88, msg:'Writing boot configuration…',     mb:100 },
-    { pct:93, msg:'Syncing filesystem…',             mb:0   },
-    { pct:97, msg:'Verifying write integrity…',      mb:0   },
-    { pct:100,msg:'Write complete!',                 mb:0   },
-  ];
-
-  for (const phase of phases) {
-    setWriteProgress(phase.pct, phase.msg);
-    addLog(phase.pct===100?'ok':'info', phase.msg);
-    written += phase.mb;
-    const elapsed = (Date.now()-startTime)/1000;
-    const speed   = elapsed>0 ? (written/elapsed).toFixed(0) : '—';
-    const remaining = TOTAL_MB - written;
-    const eta     = speed>0 ? Math.ceil(remaining/speed) + 's' : '—';
-    document.getElementById('stat-written').textContent = written>0 ? written+' MB' : '—';
-    document.getElementById('stat-speed').textContent   = speed>0 ? speed+' MB/s' : '—';
-    document.getElementById('stat-eta').textContent     = phase.pct<97 ? eta : '—';
-    await delay(600 + Math.random()*400);
+  const result = await api.writeUSB({ drivePath: selectedDrive.path, isoPath: selectedISO });
+  if (!result.success) {
+    addLog('err', result.error || 'Write failed');
+    document.getElementById('write-msg').textContent = '❌ ' + (result.error || 'Write failed');
+    document.getElementById('write-hint').textContent = 'Make sure you ran as Administrator and the drive is plugged in';
   }
-
-  await delay(600);
-  goTo(5);
 }
 
-// ── Dual boot install (fallback mode) ────────────────────────
-async function beginDualBootInstall() {
-  const steps = [
-    [5,  'Checking disk partitions…'],
-    [10, 'Creating StageOS partition (20GB)…'],
-    [18, 'Bootstrapping Ubuntu base system…'],
-    [25, 'Installing Linux kernel…'],
-    [32, 'Configuring display server…'],
-    [38, 'Installing JACK audio…'],
-    [44, 'Installing OLA DMX daemon…'],
-    [50, 'Installing StageOS suite…'],
-    [62, 'Installing selected applications…'],
-    [72, 'Writing device configuration…'],
-    [80, 'Configuring auto-login…'],
-    [87, 'Installing GRUB boot manager…'],
-    [93, 'Writing boot entry…'],
-    [97, 'Finalizing…'],
-    [100,'Installation complete!'],
-  ];
-  for (const [pct,msg] of steps) {
-    setWriteProgress(pct,msg);
-    addLog(pct===100?'ok':'info',msg);
-    await delay(500+Math.random()*300);
-  }
-  // Update done screen for dual boot
-  document.getElementById('done-icon').textContent = '🎉';
-  document.getElementById('done-h').textContent    = 'StageOS Installed!';
-  document.getElementById('done-p').textContent    = 'Restart your computer and select StageOS from the boot menu.';
-  document.getElementById('done-steps').innerHTML  = `
-    <div class="ns"><div class="ns-num">1</div><div><div class="ns-t">Restart your computer</div><div class="ns-d">A boot menu appears — select StageOS to launch your production environment</div></div></div>
-    <div class="ns"><div class="ns-num">2</div><div><div class="ns-t">Run the equipment test</div><div class="ns-d">StageOS will offer to test all your gear on first boot</div></div></div>
-    <div class="ns"><div class="ns-num">3</div><div><div class="ns-t">Connect your gear and go</div><div class="ns-d">All your apps are in the launcher. Settings → Devices to enter gear IPs.</div></div></div>
-  `;
-  await delay(600);
-  goTo(5);
-}
-
-function setWriteProgress(pct,msg) {
-  document.getElementById('prog-fill').style.width = pct+'%';
-  document.getElementById('prog-pct').textContent  = pct+'%';
-  document.getElementById('write-msg').textContent = msg;
-}
-
-function addLog(type,msg) {
-  const box  = document.getElementById('log-box');
+function addLog(type, msg) {
+  if (!msg) return;
+  const box  = document.getElementById('log-box'); if (!box) return;
   const line = document.createElement('div');
   const ts   = new Date().toLocaleTimeString('en-US',{hour12:false});
-  line.className   = 'log-line '+type;
+  line.className = 'log-line '+type;
   line.textContent = `[${ts}]  ${msg}`;
   box.appendChild(line);
   box.scrollTop = box.scrollHeight;
 }
 
-function delay(ms) { return new Promise(r=>setTimeout(r,ms)); }
+// Init
+(async () => {
+  try {
+    sysinfo = await api.getSysinfo();
+    const labels = {darwin:'🍎 macOS',win32:'🪟 Windows',linux:'🐧 Linux'};
+    document.getElementById('plat-label').textContent = labels[sysinfo.platform]||'Ready';
+  } catch(e) {}
+})();
 </script>
-</body>
-</html>
+</body></html>
