@@ -1,0 +1,254 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="UTF-8"><title>Booth</title>
+<style>
+:root{--bg:#0a0b0e;--surf:#111318;--surf2:#181b22;--border:#1e2530;--amber:#e8a020;--green:#22c55e;--red:#ef4444;--blue:#3b82f6;--text:#f0f2f7;--muted:#6b7280}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:system-ui;font-size:13px;height:100vh;display:flex;flex-direction:column;overflow:hidden}
+header{display:flex;align-items:center;justify-content:space-between;padding:0 16px;height:48px;background:var(--surf);border-bottom:1px solid var(--border);flex-shrink:0}
+.logo{font-weight:800;font-size:16px;display:flex;align-items:center;gap:8px}
+.logo-mark{width:28px;height:28px;background:var(--amber);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:900;color:#000}
+.tabs{display:flex;gap:2px}
+.tab{padding:6px 16px;border-radius:5px;cursor:pointer;font-size:12px;font-weight:600;color:var(--muted);border:none;background:transparent}
+.tab.active{color:var(--text);background:var(--surf2)}
+.pills{display:flex;gap:6px}
+.pill{display:flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;border:1px solid var(--border);font-size:10px;font-weight:600;cursor:pointer}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--muted)}
+.pill.online .dot{background:var(--green);box-shadow:0 0 6px var(--green)}
+.main{flex:1;display:flex;overflow:hidden}
+.panel{display:none;flex:1;overflow-y:auto;padding:20px;gap:16px;flex-direction:column}
+.panel.active{display:flex}
+.card{background:var(--surf);border:1px solid var(--border);border-radius:10px;padding:16px}
+.ct{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:12px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.g5{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+.btn{padding:9px 14px;border-radius:6px;border:none;font-size:12px;font-weight:600;cursor:pointer;color:var(--text);transition:all .15s}
+.ba{background:var(--amber);color:#000}
+.bg{background:rgba(34,197,94,.15);border:1px solid rgba(34,197,94,.3);color:var(--green)}
+.br{background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.3);color:var(--red)}
+.bb{background:rgba(59,130,246,.15);border:1px solid rgba(59,130,246,.3);color:var(--blue)}
+.bs{background:var(--surf2);border:1px solid var(--border);color:var(--muted)}
+.btn:active{transform:scale(.97)}
+.frow{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.flbl{font-size:10px;color:var(--muted);width:70px;flex-shrink:0}
+.fader{flex:1;height:5px;-webkit-appearance:none;background:var(--border);border-radius:3px;outline:none}
+.fader::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:var(--amber)}
+.fval{font-size:10px;color:var(--muted);width:32px;text-align:right}
+.eosbtn{padding:7px 4px;border-radius:4px;border:1px solid var(--border);background:var(--surf2);color:var(--text);font-size:10px;font-weight:600;cursor:pointer;text-align:center}
+.eosbtn:active{background:var(--amber);color:#000}
+.ainput{padding:8px;border-radius:4px;border:1px solid var(--border);background:var(--surf2);color:var(--text);font-size:10px;font-weight:700;cursor:pointer;text-align:center}
+.ainput.pgm{background:rgba(239,68,68,.2);border-color:var(--red);color:var(--red)}
+.ainput.pvw{background:rgba(34,197,94,.15);border-color:var(--green);color:var(--green)}
+input.inp{width:100%;padding:7px 10px;background:var(--surf2);border:1px solid var(--border);border-radius:5px;color:var(--text);font-size:11px;outline:none}
+input.inp:focus{border-color:var(--amber)}
+.url{font-family:monospace;font-size:11px;color:var(--amber);padding:8px 10px;background:var(--surf2);border-radius:5px;word-break:break-all}
+</style></head><body>
+<header>
+  <div class="logo"><div class="logo-mark">B</div>Booth</div>
+  <div class="tabs">
+    <button class="tab active" onclick="showTab('ctrl')">Control</button>
+    <button class="tab" onclick="showTab('audio')">Audio</button>
+    <button class="tab" onclick="showTab('light')">Lighting</button>
+    <button class="tab" onclick="showTab('video')">Video</button>
+    <button class="tab" onclick="showTab('settings')">Settings</button>
+  </div>
+  <div class="pills">
+    <div class="pill" id="p-eos"><div class="dot"></div>EOS</div>
+    <div class="pill" id="p-m32"><div class="dot"></div>M32</div>
+    <div class="pill" id="p-atem"><div class="dot"></div>ATEM</div>
+    <div class="pill" id="p-pp"><div class="dot"></div>ProPres</div>
+  </div>
+</header>
+<div class="main">
+
+  <div class="panel active" id="tab-ctrl">
+    <div class="g2">
+      <div class="card">
+        <div class="ct">ProPresenter</div>
+        <div class="g2" style="margin-bottom:8px">
+          <button class="btn bs" onclick="cmd('pp-prev')">◀ Prev</button>
+          <button class="btn ba" onclick="cmd('pp-next')">Next ▶</button>
+        </div>
+        <div class="g3">
+          <button class="btn br" onclick="osc(cfg.pp,'/pro7/triggerBlankScreen',[])">Blank</button>
+          <button class="btn bb" onclick="osc(cfg.pp,'/pro7/triggerLogo',[])">Logo</button>
+          <button class="btn bs" onclick="osc(cfg.pp,'/pro7/clearAll',[])">Clear</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="ct">ATEM Quick</div>
+        <div id="atem-quick" class="g4" style="margin-bottom:8px"></div>
+        <div class="g2">
+          <button class="btn br" style="font-size:14px;font-weight:900;padding:12px" onclick="cmd('atem-cut')">CUT</button>
+          <button class="btn ba" style="font-size:14px;font-weight:900;padding:12px" onclick="osc(cfg.atem,'/atem/auto',[])">AUTO</button>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="ct">EOS Command Pad</div>
+      <div class="g5" id="eos-pad"></div>
+    </div>
+    <div class="card">
+      <div class="ct">OSC Send</div>
+      <div style="display:flex;gap:8px">
+        <input class="inp" id="osc-addr" placeholder="/eos/cue/1/fire" style="flex:2">
+        <input class="inp" id="osc-args" placeholder="args" style="flex:1">
+        <button class="btn ba" onclick="fireOSC()">Send</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel" id="tab-audio">
+    <div class="card">
+      <div class="ct">M32 Channels</div>
+      <div id="faders"></div>
+    </div>
+  </div>
+
+  <div class="panel" id="tab-light">
+    <div class="g2">
+      <div class="card">
+        <div class="ct">EOS Cues</div>
+        <div class="g3" style="margin-bottom:10px">
+          <button class="btn bg" style="font-size:16px;font-weight:900;padding:14px" onclick="osc(cfg.eos,'/eos/cue/active/go',[])">GO</button>
+          <button class="btn br" onclick="osc(cfg.eos,'/eos/cue/active/stop',[])">STOP</button>
+          <button class="btn bs" onclick="osc(cfg.eos,'/eos/cue/active/back',[])">BACK</button>
+        </div>
+        <div class="g2">
+          <button class="btn bs" onclick="eosCmd('blackout')">Blackout</button>
+          <button class="btn bs" onclick="eosCmd('blackout off')">Restore</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="ct">Submaster Faders</div>
+        <div id="sub-faders"></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="ct">ML Controls</div>
+      <div id="ml" class="g4"></div>
+    </div>
+  </div>
+
+  <div class="panel" id="tab-video">
+    <div class="card">
+      <div class="ct">Program (Live)</div>
+      <div id="pgm" class="g4" style="margin-bottom:10px"></div>
+      <div class="ct">Preview (Next)</div>
+      <div id="pvw" class="g4"></div>
+      <div class="g2" style="margin-top:12px">
+        <button class="btn br" style="font-size:16px;font-weight:900;padding:14px" onclick="cmd('atem-cut')">CUT</button>
+        <button class="btn ba" style="font-size:16px;font-weight:900;padding:14px" onclick="osc(cfg.atem,'/atem/auto',[])">AUTO</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel" id="tab-settings">
+    <div class="card">
+      <div class="ct">Device IPs</div>
+      <div class="g2">
+        <div><label style="font-size:10px;color:var(--muted);display:block;margin-bottom:3px">EOS IP</label><input class="inp" id="s-eos-ip"></div>
+        <div><label style="font-size:10px;color:var(--muted);display:block;margin-bottom:3px">EOS Port</label><input class="inp" id="s-eos-p"></div>
+        <div><label style="font-size:10px;color:var(--muted);display:block;margin-bottom:3px">M32 IP</label><input class="inp" id="s-m32-ip"></div>
+        <div><label style="font-size:10px;color:var(--muted);display:block;margin-bottom:3px">M32 Port</label><input class="inp" id="s-m32-p"></div>
+        <div><label style="font-size:10px;color:var(--muted);display:block;margin-bottom:3px">ATEM IP</label><input class="inp" id="s-atem-ip"></div>
+        <div><label style="font-size:10px;color:var(--muted);display:block;margin-bottom:3px">ATEM Port</label><input class="inp" id="s-atem-p"></div>
+        <div><label style="font-size:10px;color:var(--muted);display:block;margin-bottom:3px">ProPresenter IP</label><input class="inp" id="s-pp-ip"></div>
+        <div><label style="font-size:10px;color:var(--muted);display:block;margin-bottom:3px">ProPresenter Port</label><input class="inp" id="s-pp-p"></div>
+      </div>
+      <button class="btn ba" style="margin-top:12px" onclick="saveSettings()">Save</button>
+    </div>
+    <div class="card">
+      <div class="ct">Mobile Remote</div>
+      <div class="url" id="srv-url">Loading...</div>
+    </div>
+  </div>
+
+</div>
+<script>
+let cfg = {eos:{ip:'192.168.1.100',port:3032},m32:{ip:'192.168.1.101',port:10023},atem:{ip:'192.168.1.103',port:9910},pp:{ip:'192.168.1.104',port:50001}};
+window.booth?.getConfig().then(c=>{cfg=c;fillSettings()});
+window.booth?.getServerUrl().then(u=>{document.getElementById('srv-url').textContent=u});
+window.booth?.onServerUrl(u=>{document.getElementById('srv-url').textContent=u});
+
+function showTab(id){
+  document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',['ctrl','audio','light','video','settings'][i]===id));
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.getElementById('tab-'+id)?.classList.add('active');
+}
+function cmd(type,extra={}){window.booth?.send({type,...extra})}
+function osc(dev,address,args){window.booth?.send({type:'osc',ip:dev.ip,port:dev.port,address,args})}
+function eosCmd(c){window.booth?.send({type:'eos-cmd',cmd:c})}
+function fireOSC(){
+  const addr=document.getElementById('osc-addr').value;
+  const args=document.getElementById('osc-args').value.split(',').filter(Boolean).map(a=>isNaN(a)?a:parseFloat(a));
+  osc(cfg.eos,addr,args);
+}
+
+// ATEM inputs
+function buildATEM(id,mode){
+  const el=document.getElementById(id);
+  if(!el)return;
+  const labels=['Cam 1','Cam 2','Cam 3','Cam 4','Cam 5','Cam 6','Cam 7','Cam 8','Bars','Black'];
+  el.innerHTML=labels.map((n,i)=>`<div class="ainput" onclick="selectATEM(${i+1},'${mode}','${id}')">${n}</div>`).join('');
+}
+function selectATEM(input,mode,id){
+  window.booth?.send({type:mode==='pgm'?'atem-pgm':'atem-input',input});
+  document.querySelectorAll('#'+id+' .ainput').forEach((el,i)=>{
+    el.classList.remove('pgm','pvw');
+    if(i+1===input)el.classList.add(mode);
+  });
+}
+buildATEM('atem-quick','pvw'); buildATEM('pgm','pgm'); buildATEM('pvw','pvw');
+
+// EOS pad
+['Go','Stop','Back','Undo','Full','Out','@50','+10','-10','Undo','Chan','Group','Cue','Sub','Macro','Record','Update','Label','Note','Learn'].forEach(b=>{
+  const el=document.createElement('div');
+  el.className='eosbtn'; el.textContent=b;
+  el.onclick=()=>eosCmd(b.toLowerCase());
+  document.getElementById('eos-pad').appendChild(el);
+});
+
+// M32 faders
+const CH=['Kick','Snare','HiHat','Bass','Gtr L','Gtr R','Keys','Vox 1','Vox 2','Vox 3','Choir','Piano','Fx 1','Fx 2','Sub L','Sub R'];
+CH.forEach((n,i)=>{
+  const row=document.createElement('div'); row.className='frow';
+  row.innerHTML=`<span class="flbl">${i+1}. ${n}</span><input type="range" class="fader" min="0" max="100" value="75" oninput="this.nextElementSibling.textContent=this.value+'%';window.booth?.send({type:'m32-fader',ch:${i+1},value:this.value/100})"><span class="fval">75%</span>`;
+  document.getElementById('faders').appendChild(row);
+});
+
+// Sub faders
+['Spots','Washes','Blinders','Hazers','Practicals'].forEach((n,i)=>{
+  const row=document.createElement('div'); row.className='frow';
+  row.innerHTML=`<span class="flbl">${n}</span><input type="range" class="fader" min="0" max="100" value="0" oninput="this.nextElementSibling.textContent=this.value+'%';eosCmd('sub ${i+1} at '+this.value)"><span class="fval">0%</span>`;
+  document.getElementById('sub-faders').appendChild(row);
+});
+
+// ML controls
+['Pan','Tilt','Color','Gobo','Zoom','Focus','Iris','Prism','Speed','Strobe','CTO','CMY'].forEach(p=>{
+  const el=document.createElement('div'); el.style.cssText='display:flex;flex-direction:column;gap:4px';
+  el.innerHTML=`<div style="font-size:10px;color:var(--muted)">${p}</div><input type="range" class="fader" min="0" max="100" value="0" oninput="eosCmd('param ${p.toLowerCase()} '+this.value)">`;
+  document.getElementById('ml').appendChild(el);
+});
+
+function fillSettings(){
+  document.getElementById('s-eos-ip').value=cfg.eos?.ip||'';
+  document.getElementById('s-eos-p').value=cfg.eos?.port||'';
+  document.getElementById('s-m32-ip').value=cfg.m32?.ip||'';
+  document.getElementById('s-m32-p').value=cfg.m32?.port||'';
+  document.getElementById('s-atem-ip').value=cfg.atem?.ip||'';
+  document.getElementById('s-atem-p').value=cfg.atem?.port||'';
+  document.getElementById('s-pp-ip').value=cfg.pp?.ip||'';
+  document.getElementById('s-pp-p').value=cfg.pp?.port||'';
+}
+function saveSettings(){
+  window.booth?.send({type:'config-update',config:{
+    eos:{ip:document.getElementById('s-eos-ip').value,port:+document.getElementById('s-eos-p').value},
+    m32:{ip:document.getElementById('s-m32-ip').value,port:+document.getElementById('s-m32-p').value},
+    atem:{ip:document.getElementById('s-atem-ip').value,port:+document.getElementById('s-atem-p').value},
+    pp:{ip:document.getElementById('s-pp-ip').value,port:+document.getElementById('s-pp-p').value},
+  }});
+}
+</script>
+</body></html>
