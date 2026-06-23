@@ -1,0 +1,967 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>LightScript — User Manual</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Inter:wght@300;400;500;600;700&family=Rajdhani:wght@500;600;700&display=swap');
+
+  :root {
+    --bg:      #0c0e14;
+    --bg2:     #12151f;
+    --bg3:     #1a1e2c;
+    --accent:  #e8a020;
+    --accent2: #3fa7e8;
+    --accent3: #7ed4a0;
+    --danger:  #e84040;
+    --text:    #f0ede8;
+    --muted:   #a8a49c;
+    --faint:   #4a4840;
+    --border:  #252a3a;
+    --mono:    'JetBrains Mono', monospace;
+    --sans:    'Inter', sans-serif;
+    --ui:      'Rajdhani', sans-serif;
+    --radius:  6px;
+    --max:     860px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 15px;
+    line-height: 1.75;
+  }
+
+  /* ── SIDEBAR NAV ── */
+  #sidebar {
+    position: fixed; top: 0; left: 0; bottom: 0;
+    width: 240px; background: var(--bg2);
+    border-right: 1px solid var(--border);
+    overflow-y: auto; z-index: 100; padding: 0 0 40px;
+  }
+  #sidebar-logo {
+    padding: 20px 20px 16px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 8px;
+  }
+  #sidebar-logo .ls {
+    font-family: var(--ui); font-size: 22px; font-weight: 700;
+    letter-spacing: 3px; color: var(--accent);
+  }
+  #sidebar-logo .sub {
+    font-family: var(--mono); font-size: 10px; letter-spacing: 1.5px;
+    color: var(--faint); margin-top: 2px;
+  }
+  .nav-section {
+    padding: 10px 20px 4px;
+    font-family: var(--ui); font-size: 10px; font-weight: 700;
+    letter-spacing: 2px; text-transform: uppercase; color: var(--faint);
+  }
+  #sidebar a {
+    display: block; padding: 5px 20px;
+    font-size: 13px; color: var(--muted); text-decoration: none;
+    border-left: 2px solid transparent;
+    transition: all 0.15s;
+  }
+  #sidebar a:hover { color: var(--text); background: var(--bg3); }
+  #sidebar a.active { color: var(--accent); border-left-color: var(--accent); background: rgba(232,160,32,0.06); }
+
+  /* ── MAIN CONTENT ── */
+  #content {
+    margin-left: 240px;
+    max-width: calc(var(--max) + 80px);
+    padding: 60px 60px 120px;
+  }
+
+  /* ── SECTIONS ── */
+  .section { margin-bottom: 72px; }
+
+  h1 {
+    font-family: var(--ui); font-size: 42px; font-weight: 700;
+    letter-spacing: 2px; color: var(--accent);
+    margin-bottom: 6px;
+  }
+  h1 .version {
+    font-family: var(--mono); font-size: 14px; font-weight: 400;
+    color: var(--faint); letter-spacing: 1px; margin-left: 12px;
+  }
+  .hero-sub {
+    font-size: 17px; color: var(--muted); margin-bottom: 40px; line-height: 1.5;
+    max-width: 600px;
+  }
+
+  h2 {
+    font-family: var(--ui); font-size: 24px; font-weight: 700;
+    letter-spacing: 1px; color: var(--text);
+    margin-bottom: 16px; padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  h2 .tag {
+    font-family: var(--mono); font-size: 11px; font-weight: 400;
+    color: var(--accent2); letter-spacing: 1px; margin-left: 10px; vertical-align: middle;
+  }
+
+  h3 {
+    font-family: var(--ui); font-size: 17px; font-weight: 600;
+    color: var(--accent2); margin: 28px 0 10px;
+    letter-spacing: 0.5px;
+  }
+
+  p { margin-bottom: 14px; color: var(--muted); max-width: 680px; }
+  p strong { color: var(--text); font-weight: 600; }
+
+  /* ── CODE ── */
+  code {
+    font-family: var(--mono); font-size: 12.5px;
+    background: var(--bg3); color: var(--accent2);
+    padding: 1px 6px; border-radius: 3px;
+    border: 1px solid var(--border);
+  }
+
+  pre {
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 18px 20px;
+    font-family: var(--mono); font-size: 12.5px;
+    line-height: 1.7; overflow-x: auto;
+    margin: 14px 0 20px; position: relative;
+  }
+  pre .comment { color: var(--faint); }
+  pre .kw      { color: var(--accent); font-weight: 700; }
+  pre .val     { color: var(--accent3); }
+  pre .param   { color: var(--accent2); }
+  pre .label   { color: var(--muted); }
+
+  /* ── CMD BLOCK ── */
+  .cmd-block {
+    background: var(--bg2); border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    border-radius: var(--radius); padding: 14px 18px;
+    margin: 10px 0 18px; font-family: var(--mono); font-size: 13px;
+  }
+  .cmd-block .syntax { color: var(--text); margin-bottom: 6px; }
+  .cmd-block .desc   { color: var(--muted); font-size: 12px; margin-bottom: 8px; }
+  .cmd-block .examples { color: var(--accent3); font-size: 12px; }
+  .cmd-block .examples div { padding: 1px 0; }
+
+  /* ── HOTKEY TABLE ── */
+  .key-table { width: 100%; border-collapse: collapse; margin: 14px 0 24px; }
+  .key-table th {
+    text-align: left; padding: 8px 12px;
+    font-family: var(--ui); font-size: 11px; font-weight: 700;
+    letter-spacing: 1.5px; text-transform: uppercase; color: var(--faint);
+    border-bottom: 1px solid var(--border);
+  }
+  .key-table td { padding: 7px 12px; border-bottom: 1px solid rgba(37,42,58,0.6); }
+  .key-table td:first-child { color: var(--muted); font-size: 14px; }
+  .key-table td:last-child  { color: var(--muted); font-size: 13px; }
+  kbd {
+    font-family: var(--mono); font-size: 11px;
+    background: var(--bg3); color: var(--text);
+    border: 1px solid var(--border); border-bottom-width: 2px;
+    border-radius: 3px; padding: 1px 7px; white-space: nowrap;
+  }
+
+  /* ── CALLOUT ── */
+  .callout {
+    border-radius: var(--radius); padding: 14px 18px;
+    margin: 16px 0; display: flex; gap: 14px; align-items: flex-start;
+  }
+  .callout.info    { background: rgba(63,167,232,0.08); border: 1px solid rgba(63,167,232,0.25); }
+  .callout.warn    { background: rgba(232,160,32,0.08); border: 1px solid rgba(232,160,32,0.25); }
+  .callout.tip     { background: rgba(126,212,160,0.08); border: 1px solid rgba(126,212,160,0.25); }
+  .callout .icon   { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+  .callout p       { margin: 0; font-size: 13.5px; }
+  .callout.info p  { color: var(--accent2); }
+  .callout.warn p  { color: var(--accent); }
+  .callout.tip p   { color: var(--accent3); }
+
+  /* ── PARAMETER GRID ── */
+  .param-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 8px; margin: 14px 0 24px;
+  }
+  .param-card {
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 10px 14px;
+  }
+  .param-name { font-family: var(--mono); font-size: 12px; color: var(--accent2); font-weight: 700; }
+  .param-range { font-size: 11px; color: var(--faint); margin-top: 2px; }
+  .param-desc  { font-size: 12px; color: var(--muted); margin-top: 4px; }
+
+  /* ── WORKFLOW STEPS ── */
+  .steps { list-style: none; margin: 14px 0 24px; }
+  .steps li {
+    display: flex; gap: 16px; align-items: flex-start;
+    padding: 12px 0; border-bottom: 1px solid var(--border);
+  }
+  .steps li:last-child { border-bottom: none; }
+  .step-num {
+    width: 26px; height: 26px; border-radius: 50%; flex-shrink: 0;
+    background: var(--accent); color: #000;
+    font-family: var(--ui); font-weight: 700; font-size: 13px;
+    display: flex; align-items: center; justify-content: center;
+    margin-top: 2px;
+  }
+  .step-body strong { color: var(--text); display: block; margin-bottom: 3px; font-size: 14px; }
+  .step-body span   { font-size: 13px; color: var(--muted); }
+
+  /* ── DIVIDER ── */
+  hr { border: none; border-top: 1px solid var(--border); margin: 40px 0; }
+
+  /* ── FOOTER ── */
+  #footer {
+    margin-left: 240px; padding: 24px 60px;
+    border-top: 1px solid var(--border);
+    font-size: 12px; color: var(--faint); font-family: var(--mono);
+  }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 800px) {
+    #sidebar { display: none; }
+    #content { margin-left: 0; padding: 32px 24px 80px; }
+    #footer  { margin-left: 0; padding: 20px 24px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══ SIDEBAR ═══════════════════════════════════════════════════════════════ -->
+<nav id="sidebar">
+  <div id="sidebar-logo">
+    <div class="ls">LIGHTSCRIPT</div>
+    <div class="sub">USER MANUAL v2.0</div>
+  </div>
+  <div class="nav-section">Getting Started</div>
+  <a href="#intro">Introduction</a>
+  <a href="#install">Installation</a>
+  <a href="#quickstart">Quick Start</a>
+  <a href="#interface">The Interface</a>
+  <div class="nav-section">Core Concepts</div>
+  <a href="#patching">Patching Fixtures</a>
+  <a href="#commandline">Command Line</a>
+  <a href="#parameters">Parameters</a>
+  <a href="#variables">Variables ($VAR$)</a>
+  <div class="nav-section">Commands</div>
+  <a href="#cmd-set">SET</a>
+  <a href="#cmd-fade">FADE</a>
+  <a href="#cmd-store">STORE</a>
+  <a href="#cmd-delete">DELETE</a>
+  <a href="#cmd-effect">EFFECT</a>
+  <a href="#cmd-timeline">TIMELINE</a>
+  <a href="#multiline-editor">Multiline Editor</a>
+  <div class="nav-section">Output</div>
+  <a href="#sacn">sACN Output</a>
+  <a href="#cues">Cuelists</a>
+  <a href="#presets">Presets</a>
+  <a href="#faders">Faders</a>
+  <div class="nav-section">Advanced</div>
+  <a href="#links">Links (OSC)</a>
+  <a href="#viz3d">3D Visualizer</a>
+  <a href="#showfiles">Show Files</a>
+  <a href="#hotkeys">Hotkeys</a>
+  <a href="#troubleshooting">Troubleshooting</a>
+</nav>
+
+<!-- ═══ CONTENT ═══════════════════════════════════════════════════════════════ -->
+<main id="content">
+
+<!-- INTRO -->
+<div class="section" id="intro">
+  <h1>LIGHTSCRIPT <span class="version">v2.0</span></h1>
+  <p class="hero-sub">A scriptable, code-first lighting console. Control every fixture parameter with a powerful command language, output over sACN (E1.31), and visualise your rig in real time.</p>
+
+  <h2>Introduction</h2>
+  <p>LightScript is a desktop lighting console built on Electron. Unlike traditional consoles where every action goes through menus and encoders, LightScript puts a command language at the centre. You type commands, LightScript executes them — instantly, precisely, and repeatably.</p>
+  <p>Everything in LightScript is a first-class object: fixtures, cues, presets, faders, effects, timelines, and variables. All of these can be created, recalled, and deleted from the command line. The four panels (Grouping Grid, Cuelist, Presets, Faders) are live views of your show state, not the primary input method.</p>
+  <p>Output is via <strong>sACN (ANSI E1.31)</strong> — broadcast over your network to any sACN-compatible node, switch, or dimmer rack.</p>
+</div>
+
+<!-- INSTALL -->
+<div class="section" id="install">
+  <h2>Installation</h2>
+  <h3>Requirements</h3>
+  <p><strong>Node.js v18+</strong> — download from <a href="https://nodejs.org" style="color:var(--accent2)">nodejs.org</a> (LTS recommended). npm is included.</p>
+
+  <h3>Running from source</h3>
+  <pre><span class="comment"># Unzip the LightScript package, then:</span>
+<span class="kw">cd</span> lightscript
+<span class="kw">npm install</span>     <span class="comment"># downloads Electron (~100 MB, one-time)</span>
+<span class="kw">npm start</span>       <span class="comment"># launches the app</span></pre>
+
+  <h3>Building a distributable</h3>
+  <pre><span class="kw">npm run build-win</span>      <span class="comment"># → dist/LightScript Setup.exe  (Windows)</span>
+<span class="kw">npm run build-mac</span>      <span class="comment"># → dist/LightScript.dmg        (macOS)</span>
+<span class="kw">npm run build-linux</span>    <span class="comment"># → dist/LightScript.AppImage   (Linux)</span></pre>
+
+  <div class="callout info">
+    <span class="icon">ℹ</span>
+    <p>Built files appear in the <code>dist/</code> folder. The built app is self-contained — Node.js is not required on the target machine.</p>
+  </div>
+</div>
+
+<!-- QUICKSTART -->
+<div class="section" id="quickstart">
+  <h2>Quick Start</h2>
+  <ul class="steps">
+    <li>
+      <div class="step-num">1</div>
+      <div class="step-body">
+        <strong>Patch your fixtures</strong>
+        <span>Go to the <strong>Patching</strong> tab, click <strong>+ Add Fixture</strong>, choose a profile (e.g. Generic Moving Head 16CH), set the DMX start address, and click Patch Fixture.</span>
+      </div>
+    </li>
+    <li>
+      <div class="step-num">2</div>
+      <div class="step-body">
+        <strong>Start sACN output</strong>
+        <span>Click the <strong>START</strong> button in the top bar, or go to <strong>sACN → Start sACN Output</strong>. The dot turns green when transmitting.</span>
+      </div>
+    </li>
+    <li>
+      <div class="step-num">3</div>
+      <div class="step-body">
+        <strong>Select fixtures and test</strong>
+        <span>Click fixtures in the Grouping Grid to select them, then type <code>SET FIX sel dimmer 255</code> in the command line and press Enter.</span>
+      </div>
+    </li>
+    <li>
+      <div class="step-num">4</div>
+      <div class="step-body">
+        <strong>Store a cue</strong>
+        <span>Type <code>STORE CUE.1 Full Stage</code> to record your first cue. Hit <strong>GO ▶</strong> to fire it.</span>
+      </div>
+    </li>
+    <li>
+      <div class="step-num">5</div>
+      <div class="step-body">
+        <strong>Save your show</strong>
+        <span>Press <kbd>Ctrl+S</kbd> (or <kbd>Cmd+S</kbd> on Mac). LightScript saves everything — fixtures, cues, presets, faders, links, variables, and timelines — to a <code>.lss</code> file.</span>
+      </div>
+    </li>
+  </ul>
+</div>
+
+<!-- INTERFACE -->
+<div class="section" id="interface">
+  <h2>The Interface</h2>
+
+  <h3>Top Bar</h3>
+  <p>Contains the <strong>tab switcher</strong> (Live / Patching / Links / 3D Viz / Settings), the <strong>show name badge</strong>, the <strong>sACN status cluster</strong> with live indicator dot and START/STOP button, and the system clock.</p>
+
+  <h3>Live Tab — Four Panels</h3>
+  <p>The Live tab is split into four equal panels. Each serves a different purpose:</p>
+
+  <table class="key-table">
+    <tr><th>Panel</th><th>Purpose</th></tr>
+    <tr><td><strong>Grouping Grid</strong></td><td>Visual grid of all patched fixtures. Click to select/deselect. Selected fixtures are highlighted amber. Brightness and colour shown live.</td></tr>
+    <tr><td><strong>Cuelist</strong></td><td>Your show's cue sequence. GO / BACK / STOP buttons, per-cue jump buttons, fade and delay times shown.</td></tr>
+    <tr><td><strong>Presets</strong></td><td>Intensity (INT), Colour (COL), and Position (POS) presets. Click a preset to recall it on selected fixtures. Filter by type using the panel buttons.</td></tr>
+    <tr><td><strong>Faders</strong></td><td>Eight named faders. Drag the track up/down to set a level. GO button toggles between 0 and 80. RELEASE ALL zeroes all faders.</td></tr>
+  </table>
+
+  <h3>Programmer Bar</h3>
+  <p>The thin bar between the panels and the command line shows the current selection (<strong>SEL</strong>), last parameter touched (<strong>PARAM</strong>), last value (<strong>VAL</strong>), current cue (<strong>CUE</strong>), and next cue (<strong>NEXT</strong>).</p>
+
+  <h3>Command Line</h3>
+  <p>The command line at the bottom is where you talk to LightScript. Press <kbd>Enter</kbd> to execute. <kbd>↑</kbd>/<kbd>↓</kbd> cycles through history. <kbd>Tab</kbd> accepts autocomplete. <kbd>Shift+Enter</kbd> opens the multiline editor for EFFECT and TIMELINE programming.</p>
+
+  <h3>Command History</h3>
+  <p>The scrollable pane above the command line shows the output of every command — green for success, red for errors, blue for info. Capped at 200 lines.</p>
+</div>
+
+<!-- PATCHING -->
+<div class="section" id="patching">
+  <h2>Patching Fixtures <span class="tag">PATCHING TAB</span></h2>
+  <p>Before you can control a fixture, it must be patched. Patching tells LightScript the fixture's DMX start address and channel layout.</p>
+
+  <h3>Adding a fixture</h3>
+  <ul class="steps">
+    <li>
+      <div class="step-num">1</div>
+      <div class="step-body">
+        <strong>Open the Patching tab</strong>
+        <span>Click "Patching" in the top tab bar.</span>
+      </div>
+    </li>
+    <li>
+      <div class="step-num">2</div>
+      <div class="step-body">
+        <strong>Click + Add Fixture</strong>
+        <span>The Add Fixture modal opens. The next available address is pre-filled automatically.</span>
+      </div>
+    </li>
+    <li>
+      <div class="step-num">3</div>
+      <div class="step-body">
+        <strong>Choose a profile and mode</strong>
+        <span>Select from the built-in profiles: Generic PAR, Generic Moving Head (8CH / 16CH), Generic LED Wash (7CH), Generic RGB, Generic RGBA, Generic Strobe, and Generic Hazer. The channel list is shown inline so you know exactly what each channel does.</span>
+      </div>
+    </li>
+    <li>
+      <div class="step-num">4</div>
+      <div class="step-body">
+        <strong>Click Patch Fixture</strong>
+        <span>The fixture appears in the patch table and in the Grouping Grid on the Live tab.</span>
+      </div>
+    </li>
+  </ul>
+
+  <h3>Removing fixtures</h3>
+  <p>Click the ✕ in the patch table, or use the command line: <code>DELETE FIX.5</code> removes fixture 5, <code>DELETE FIX.1-8</code> removes a range.</p>
+
+  <h3>Built-in fixture profiles</h3>
+  <div class="param-grid">
+    <div class="param-card"><div class="param-name">Generic Dimmer</div><div class="param-range">1CH</div><div class="param-desc">Single dimmer channel</div></div>
+    <div class="param-card"><div class="param-name">Generic PAR</div><div class="param-range">6CH</div><div class="param-desc">Dimmer + RGB + strobe + program</div></div>
+    <div class="param-card"><div class="param-name">Generic RGB LED</div><div class="param-range">3CH / 4CH</div><div class="param-desc">RGB or master + RGB</div></div>
+    <div class="param-card"><div class="param-name">Generic RGBA LED</div><div class="param-range">4CH</div><div class="param-desc">Red, green, blue, amber</div></div>
+    <div class="param-card"><div class="param-name">Generic Moving Head</div><div class="param-range">8CH / 16CH</div><div class="param-desc">Full moving head with CMY/gobo</div></div>
+    <div class="param-card"><div class="param-name">Generic LED Wash</div><div class="param-range">7CH</div><div class="param-desc">Dimmer + RGBW + strobe + zoom</div></div>
+    <div class="param-card"><div class="param-name">Generic Strobe</div><div class="param-range">2CH</div><div class="param-desc">Intensity + strobe rate</div></div>
+    <div class="param-card"><div class="param-name">Generic Hazer</div><div class="param-range">1CH / 2CH</div><div class="param-desc">Output + optional fan</div></div>
+  </div>
+</div>
+
+<!-- COMMAND LINE -->
+<div class="section" id="commandline">
+  <h2>The Command Line</h2>
+  <p>The command line is the heart of LightScript. Every action — setting a value, recording a cue, deleting a preset — is a command. Commands are typed in plain text and executed by pressing <kbd>Enter</kbd>.</p>
+
+  <h3>Syntax overview</h3>
+  <pre><span class="kw">ACTION</span> <span class="param">TARGET</span> <span class="param">[PARAMETER]</span> <span class="val">VALUE</span> <span class="comment">[OPTIONS]</span></pre>
+
+  <h3>Fixture selection syntax</h3>
+  <table class="key-table">
+    <tr><th>Syntax</th><th>Meaning</th><th>Example</th></tr>
+    <tr><td><code>FIX 1</code></td><td>Single fixture</td><td><code>SET FIX 1 dimmer 255</code></td></tr>
+    <tr><td><code>FIX 1-8</code></td><td>Range</td><td><code>SET FIX 1-8 dimmer 128</code></td></tr>
+    <tr><td><code>FIX 1,3,5</code></td><td>Comma list</td><td><code>SET FIX 1,3,5 red 255</code></td></tr>
+    <tr><td><code>FIX 1.dimmer</code></td><td>Dot notation for param</td><td><code>SET FIX 1.red 255</code></td></tr>
+    <tr><td><code>FIX sel</code></td><td>Currently selected</td><td><code>SET FIX sel dimmer 0</code></td></tr>
+  </table>
+
+  <h3>Autocomplete</h3>
+  <p>As you type, LightScript suggests completions. Press <kbd>Tab</kbd> to accept the top suggestion. Suggestions appear for all commands, subcommands, and parameter names.</p>
+
+  <h3>Command history</h3>
+  <p>Press <kbd>↑</kbd> to scroll back through previously executed commands. Press <kbd>↓</kbd> to move forward. The full session history is kept in memory.</p>
+
+  <h3>Multiline editor</h3>
+  <p>For EFFECT and TIMELINE commands which require multiple lines, type <code>EFFECT</code> or <code>TIMELINE name</code> and press Enter — the multiline editor opens automatically. You can also press <kbd>Shift+Enter</kbd> at any time to open it. See the <a href="#multiline-editor" style="color:var(--accent2)">Multiline Editor</a> section for details.</p>
+</div>
+
+<!-- PARAMETERS -->
+<div class="section" id="parameters">
+  <h2>Parameters</h2>
+  <p>Every fixture has a set of parameters. Parameters map directly to DMX channels according to the fixture's patched profile and mode.</p>
+
+  <div class="param-grid">
+    <div class="param-card"><div class="param-name">dimmer</div><div class="param-range">0 – 255</div><div class="param-desc">Overall intensity / master</div></div>
+    <div class="param-card"><div class="param-name">red</div><div class="param-range">0 – 255</div><div class="param-desc">Red colour channel</div></div>
+    <div class="param-card"><div class="param-name">green</div><div class="param-range">0 – 255</div><div class="param-desc">Green colour channel</div></div>
+    <div class="param-card"><div class="param-name">blue</div><div class="param-range">0 – 255</div><div class="param-desc">Blue colour channel</div></div>
+    <div class="param-card"><div class="param-name">pan</div><div class="param-range">0 – 255</div><div class="param-desc">Horizontal position (127 = centre)</div></div>
+    <div class="param-card"><div class="param-name">tilt</div><div class="param-range">0 – 255</div><div class="param-desc">Vertical position (127 = centre)</div></div>
+    <div class="param-card"><div class="param-name">gobo</div><div class="param-range">0 – 255</div><div class="param-desc">Gobo wheel position</div></div>
+    <div class="param-card"><div class="param-name">color</div><div class="param-range">0 – 255</div><div class="param-desc">Colour wheel position</div></div>
+    <div class="param-card"><div class="param-name">shutter</div><div class="param-range">0 – 255</div><div class="param-desc">Shutter / beam open (255 = open)</div></div>
+    <div class="param-card"><div class="param-name">zoom</div><div class="param-range">0 – 255</div><div class="param-desc">Beam angle (127 = mid)</div></div>
+    <div class="param-card"><div class="param-name">strobe</div><div class="param-range">0 – 255</div><div class="param-desc">Strobe rate (0 = off)</div></div>
+    <div class="param-card"><div class="param-name">focus</div><div class="param-range">0 – 255</div><div class="param-desc">Beam focus (127 = mid)</div></div>
+  </div>
+
+  <div class="callout tip">
+    <span class="icon">✓</span>
+    <p>You don't need to type the parameter name for dimmer — <code>SET FIX 1 255</code> is shorthand for <code>SET FIX 1 dimmer 255</code>.</p>
+  </div>
+</div>
+
+<!-- VARIABLES -->
+<div class="section" id="variables">
+  <h2>Variables ($VAR$) <span class="tag">ADVANCED</span></h2>
+  <p>Variables let you store a value once and reference it anywhere in a command. Variable names are wrapped in dollar signs.</p>
+
+  <h3>Assigning a variable</h3>
+  <pre><span class="kw">$</span> <span class="param">varname</span> = <span class="val">value</span>
+
+<span class="comment"># Examples:</span>
+<span class="kw">$</span> level = 200
+<span class="kw">$</span> myfix = 1-8</pre>
+
+  <h3>Using a variable</h3>
+  <pre><span class="comment"># Use $level$ in place of a value:</span>
+SET FIX 1 dimmer <span class="val">$level$</span>
+
+<span class="comment"># Use $myfix$ in place of a fixture spec:</span>
+FADE FIX <span class="val">$myfix$</span> dimmer 0 2000</pre>
+
+  <p>Variables are resolved before the command is parsed, so they work in any position. They persist until the show is closed or a new show is loaded.</p>
+
+  <h3>Variables in Links</h3>
+  <p>The Links tab uses variables to capture parts of incoming OSC addresses. For example, a link with source <code>/show/cue/$n$</code> captures the <code>n</code> segment of the OSC address and makes it available as <code>$n$</code> in the target command. See <a href="#links" style="color:var(--accent2)">Links (OSC)</a>.</p>
+</div>
+
+<!-- CMD: SET -->
+<div class="section" id="cmd-set">
+  <h2>SET <span class="tag">COMMAND</span></h2>
+  <p>Snaps a fixture parameter to a value instantly with no fade time.</p>
+
+  <div class="cmd-block">
+    <div class="syntax">SET FIX &lt;id&gt; [param] &lt;value&gt;</div>
+    <div class="desc">Instantly set one or more fixture parameters.</div>
+    <div class="examples">
+      <div>SET FIX 1 dimmer 255           <span style="color:var(--faint)">— fixture 1 full</span></div>
+      <div>SET FIX 1-8 dimmer 128         <span style="color:var(--faint)">— fixtures 1–8 to 50%</span></div>
+      <div>SET FIX 1,3,5 red 255          <span style="color:var(--faint)">— red channel on fixtures 1, 3, 5</span></div>
+      <div>SET FIX 1.red 255              <span style="color:var(--faint)">— dot notation shorthand</span></div>
+      <div>SET FIX sel dimmer 0           <span style="color:var(--faint)">— zero dimmer on selected fixtures</span></div>
+    </div>
+  </div>
+
+  <div class="callout warn">
+    <span class="icon">⚠</span>
+    <p>SET fires immediately — no fade. If you want a transition use FADE instead.</p>
+  </div>
+</div>
+
+<!-- CMD: FADE -->
+<div class="section" id="cmd-fade">
+  <h2>FADE <span class="tag">COMMAND</span></h2>
+  <p>Fades a fixture parameter to a value over a specified time in milliseconds. The fade runs in the background — you can issue new commands while it is running.</p>
+
+  <div class="cmd-block">
+    <div class="syntax">FADE FIX &lt;id&gt; [param] &lt;value&gt; [time_ms]</div>
+    <div class="desc">Fade to value over time. Default fade time is 2000ms if not specified.</div>
+    <div class="examples">
+      <div>FADE FIX 1 dimmer 0 3000       <span style="color:var(--faint)">— fade out fixture 1 over 3 seconds</span></div>
+      <div>FADE FIX 1-8 dimmer 255 1500   <span style="color:var(--faint)">— fade up all in 1.5 seconds</span></div>
+      <div>FADE FIX 2 blue 255 500        <span style="color:var(--faint)">— fade blue channel in 500ms</span></div>
+      <div>FADE FIX sel pan 200 4000      <span style="color:var(--faint)">— slow pan fade on selection</span></div>
+    </div>
+  </div>
+
+  <p>Multiple fades on the same fixture/parameter can run simultaneously. Starting a new fade on the same fixture+parameter cancels the previous one for that channel.</p>
+  <p>To stop all running fades, click the <strong>■ STOP</strong> button in the Cuelist panel header.</p>
+</div>
+
+<!-- CMD: STORE -->
+<div class="section" id="cmd-store">
+  <h2>STORE <span class="tag">COMMAND</span></h2>
+  <p>Records a cue, preset, or fader label. The stored object can be recalled later.</p>
+
+  <div class="cmd-block">
+    <div class="syntax">STORE CUE.&lt;num&gt; &lt;name&gt;</div>
+    <div class="desc">Store the current programmer state as a cue. Fade time comes from the default fade time in Settings.</div>
+    <div class="examples">
+      <div>STORE CUE.1 Blackout</div>
+      <div>STORE CUE.10 Opening Scene</div>
+    </div>
+  </div>
+
+  <div class="cmd-block">
+    <div class="syntax">STORE PRESET.&lt;TYPE&gt;.&lt;num&gt; &lt;name&gt;</div>
+    <div class="desc">Store a preset. TYPE is INT (intensity), COL (colour), or POS (position).</div>
+    <div class="examples">
+      <div>STORE PRESET.INT.5 Half Stage</div>
+      <div>STORE PRESET.COL.3 Sunrise</div>
+      <div>STORE PRESET.POS.2 Stage Left</div>
+    </div>
+  </div>
+
+  <div class="cmd-block">
+    <div class="syntax">STORE FADER.&lt;num&gt; &lt;name&gt;</div>
+    <div class="desc">Set the label for a fader strip (1–8).</div>
+    <div class="examples">
+      <div>STORE FADER.1 Grand Master</div>
+      <div>STORE FADER.3 Wash</div>
+    </div>
+  </div>
+</div>
+
+<!-- CMD: DELETE -->
+<div class="section" id="cmd-delete">
+  <h2>DELETE <span class="tag">COMMAND</span></h2>
+  <p>Permanently removes a stored object. <code>DEL</code> is an accepted shorthand.</p>
+
+  <div class="cmd-block">
+    <div class="syntax">DELETE &lt;target&gt;</div>
+    <div class="examples">
+      <div>DELETE CUE.3               <span style="color:var(--faint)">— delete cue number 3</span></div>
+      <div>DELETE PRESET.INT.2        <span style="color:var(--faint)">— delete intensity preset 2</span></div>
+      <div>DELETE PRESET.COL.1        <span style="color:var(--faint)">— delete colour preset 1</span></div>
+      <div>DELETE FIX.5               <span style="color:var(--faint)">— unpatch fixture 5</span></div>
+      <div>DELETE FIX.1-4             <span style="color:var(--faint)">— unpatch fixtures 1 through 4</span></div>
+      <div>DELETE LINK.1              <span style="color:var(--faint)">— delete link #1 (1-indexed)</span></div>
+      <div>DELETE TIMELINE myshow     <span style="color:var(--faint)">— delete named timeline</span></div>
+    </div>
+  </div>
+
+  <div class="callout warn">
+    <span class="icon">⚠</span>
+    <p>DELETE is immediate and cannot be undone within the current session. Save your show before making large deletions.</p>
+  </div>
+</div>
+
+<!-- CMD: EFFECT -->
+<div class="section" id="cmd-effect">
+  <h2>EFFECT <span class="tag">COMMAND</span></h2>
+  <p>Creates a looping, multi-step effect. Each step is a command followed by a hold time in milliseconds. The effect loops indefinitely until explicitly stopped.</p>
+
+  <h3>Syntax</h3>
+  <p>Type <code>EFFECT</code> and press Enter. The multiline editor opens. Write one command per line, with the hold time (ms) as the last number on each line. Press <strong>STORE</strong> when done.</p>
+
+  <pre><span class="comment"># Simple chase effect (500ms per step):</span>
+<span class="kw">SET</span> FIX <span class="param">1-4</span>  dimmer <span class="val">255</span>  <span class="val">500</span>
+<span class="kw">SET</span> FIX <span class="param">1-4</span>  dimmer <span class="val">0</span>    <span class="val">500</span>
+<span class="kw">SET</span> FIX <span class="param">5-8</span>  dimmer <span class="val">255</span>  <span class="val">500</span>
+<span class="kw">SET</span> FIX <span class="param">5-8</span>  dimmer <span class="val">0</span>    <span class="val">500</span>
+
+<span class="comment"># Colour cycle (1000ms per step):</span>
+<span class="kw">SET</span> FIX <span class="param">1-8</span>  red <span class="val">255</span>  <span class="val">1000</span>
+<span class="kw">SET</span> FIX <span class="param">1-8</span>  green <span class="val">255</span>  <span class="val">1000</span>
+<span class="kw">SET</span> FIX <span class="param">1-8</span>  blue <span class="val">255</span>  <span class="val">1000</span></pre>
+
+  <p>After storing, the effect is assigned an internal key (e.g. <code>EFX1718200000</code>) and can be recalled from the show file. Press <strong>RUN ▶</strong> in the editor to preview steps live without storing.</p>
+</div>
+
+<!-- CMD: TIMELINE -->
+<div class="section" id="cmd-timeline">
+  <h2>TIMELINE <span class="tag">COMMAND</span></h2>
+  <p>A timeline is like an EFFECT but plays once (no loop) and has absolute time offsets instead of hold times. Timelines are show-wide and persist until deleted.</p>
+
+  <h3>Syntax</h3>
+  <p>Type <code>TIMELINE myname</code> and press Enter. The multiline editor opens in TIMELINE mode. Write one command per line with the time offset (ms from start) as the last number.</p>
+
+  <pre><span class="comment"># 10-second show opener timeline:</span>
+<span class="kw">SET</span> FIX <span class="param">1-24</span> dimmer <span class="val">0</span>      <span class="val">0</span>       <span class="comment"># start: blackout</span>
+<span class="kw">FADE</span> FIX <span class="param">1-8</span>  dimmer <span class="val">255</span>  <span class="val">3000</span>   <span class="comment"># 3s: fade up front wash</span>
+<span class="kw">SET</span> FIX <span class="param">9-16</span>  red <span class="val">255</span>     <span class="val">5000</span>   <span class="comment"># 5s: add red backs</span>
+<span class="kw">FADE</span> FIX <span class="param">17-24</span> pan <span class="val">200</span>   <span class="val">7000</span>   <span class="comment"># 7s: pan spots</span>
+<span class="kw">FADE</span> FIX <span class="param">1-24</span> dimmer <span class="val">0</span>   <span class="val">10000</span>  <span class="comment"># 10s: fade to black</span></pre>
+
+  <p>Timelines are stored by name. Recall with <code>TIMELINE myname</code>. Delete with <code>DELETE TIMELINE myname</code>.</p>
+
+  <div class="callout info">
+    <span class="icon">ℹ</span>
+    <p>The key difference between EFFECT and TIMELINE: EFFECT loops and uses relative hold times between steps; TIMELINE plays once and uses absolute time offsets from the start.</p>
+  </div>
+</div>
+
+<!-- MULTILINE EDITOR -->
+<div class="section" id="multiline-editor">
+  <h2>Multiline Editor <span class="tag">EFFECT / TIMELINE</span></h2>
+  <p>The multiline editor replaces the single-line bar when programming EFFECT and TIMELINE objects. It provides a code-editor experience with line numbers, syntax-aware placeholder text, and dedicated run/store controls.</p>
+
+  <h3>Opening the editor</h3>
+  <p>Three ways to open it:</p>
+  <ul style="color:var(--muted);margin:0 0 14px 20px;line-height:2">
+    <li>Type <code>EFFECT</code> and press <kbd>Enter</kbd></li>
+    <li>Type <code>TIMELINE myname</code> and press <kbd>Enter</kbd></li>
+    <li>Press <kbd>Shift+Enter</kbd> at any time to open with current single-line content pre-filled</li>
+  </ul>
+
+  <h3>Editor controls</h3>
+  <table class="key-table">
+    <tr><th>Control</th><th>Action</th></tr>
+    <tr><td><strong>RUN ▶</strong></td><td>Execute all lines immediately as a live preview. Does not store.</td></tr>
+    <tr><td><strong>STORE</strong></td><td>Save the block as an EFFECT or TIMELINE object and close the editor.</td></tr>
+    <tr><td><strong>✕ CANCEL</strong></td><td>Discard and close the editor.</td></tr>
+    <tr><td><kbd>Ctrl+Enter</kbd></td><td>Same as RUN ▶</td></tr>
+    <tr><td><kbd>Ctrl+S</kbd></td><td>Same as STORE</td></tr>
+    <tr><td><kbd>Esc</kbd></td><td>Same as ✕ CANCEL</td></tr>
+    <tr><td><kbd>Tab</kbd></td><td>Inserts 2 spaces (indentation)</td></tr>
+  </table>
+
+  <h3>Line format</h3>
+  <p>Each line is a standard LightScript command with a time argument appended as the last number on the line:</p>
+  <pre><span class="kw">COMMAND</span> <span class="param">ARGUMENTS</span>  <span class="val">TIME_MS</span>
+
+<span class="comment"># For EFFECT: TIME_MS is the hold time after this step (before next step fires)</span>
+SET FIX 1-8 dimmer 255  <span class="val">500</span>    <span class="comment"># hold for 500ms then go to next step</span>
+
+<span class="comment"># For TIMELINE: TIME_MS is when this step fires relative to timeline start</span>
+SET FIX 1-8 dimmer 255  <span class="val">2000</span>   <span class="comment"># fires at t=2000ms from timeline start</span></pre>
+
+  <p>Blank lines are ignored. The gutter on the left shows line numbers that update as you type.</p>
+</div>
+
+<!-- sACN -->
+<div class="section" id="sacn">
+  <h2>sACN Output <span class="tag">E1.31</span></h2>
+  <p>LightScript transmits DMX data over the network using sACN (ANSI E1.31). No physical DMX interface is required — connect LightScript to any sACN-capable node, dimmer rack, or gateway on the same network.</p>
+
+  <h3>How sACN works</h3>
+  <p>LightScript sends UDP multicast packets to the standard sACN multicast addresses (<code>239.255.0.&lt;universe&gt;</code>) on port 5568. Each universe carries 512 DMX channels. Fixtures are automatically placed into universes based on their patched start address.</p>
+
+  <h3>Starting output</h3>
+  <p>Click <strong>START</strong> in the top bar, or use <strong>sACN → Start sACN Output</strong> (<kbd>Ctrl+Shift+O</kbd>). The dot turns green and the badge reads <strong>sACN ON</strong>. LightScript then transmits all fixture values continuously at the configured fps rate.</p>
+
+  <h3>sACN Settings</h3>
+  <p>Click the ⚙ button next to the sACN status cluster, or go to <strong>sACN → sACN Settings</strong>.</p>
+
+  <table class="key-table">
+    <tr><th>Setting</th><th>Description</th><th>Default</th></tr>
+    <tr><td><strong>Network Interface</strong></td><td>Which network adapter to transmit from. "Auto" uses the system default.</td><td>Auto</td></tr>
+    <tr><td><strong>Source Name</strong></td><td>The name broadcast in sACN packets. Receivers use this to identify the source.</td><td>LightScript</td></tr>
+    <tr><td><strong>Priority</strong></td><td>sACN priority (1–200). Higher priority wins when multiple sources exist. 100 is the standard default.</td><td>100</td></tr>
+    <tr><td><strong>Refresh Rate</strong></td><td>How many packets per second are sent. 40fps is recommended. Maximum is 44fps (E1.31 spec limit).</td><td>40</td></tr>
+  </table>
+
+  <h3>Blackout</h3>
+  <p>Press <kbd>Ctrl+B</kbd> or go to <strong>sACN → Blackout</strong>. This zeroes all dimmer values locally and pushes a zero frame over sACN immediately.</p>
+
+  <div class="callout info">
+    <span class="icon">ℹ</span>
+    <p>sACN uses UDP multicast. Your network switch must support multicast, or the computer and nodes must be on the same layer-2 segment (direct connection or unmanaged switch). Managed switches may need IGMP snooping enabled.</p>
+  </div>
+</div>
+
+<!-- CUES -->
+<div class="section" id="cues">
+  <h2>Cuelists</h2>
+  <p>A cue is a snapshot of your programmer state with a name, a cue number, a fade time, and an optional delay time. Cues are stored in the cuelist and fired in sequence with GO.</p>
+
+  <h3>Storing cues</h3>
+  <p>Set your fixtures to the desired state using SET/FADE commands, then:</p>
+  <pre>STORE CUE.<span class="val">5</span> <span class="param">Opening Scene</span></pre>
+  <p>The default fade time (set in Settings) is used. Cue numbers can be any string — <code>1</code>, <code>1.5</code>, <code>10A</code> are all valid.</p>
+
+  <h3>Firing cues</h3>
+  <p>Click <strong>GO ▶</strong> to advance to the next cue. Click <strong>◀ BACK</strong> to return to the previous. Click the ▶ button on any individual cue row to jump directly. Press <kbd>Space</kbd> from anywhere in the app to GO.</p>
+
+  <h3>Stopping fades</h3>
+  <p>Click <strong>■ STOP</strong> to halt all running fades immediately at their current value.</p>
+</div>
+
+<!-- PRESETS -->
+<div class="section" id="presets">
+  <h2>Presets</h2>
+  <p>Presets store parameter values that can be instantly recalled onto selected fixtures. There are three types:</p>
+
+  <table class="key-table">
+    <tr><th>Type</th><th>Stores</th><th>Example</th></tr>
+    <tr><td><code>INT</code></td><td>Dimmer/intensity level</td><td><code>STORE PRESET.INT.1 Full</code></td></tr>
+    <tr><td><code>COL</code></td><td>Colour (red, green, blue)</td><td><code>STORE PRESET.COL.3 Red</code></td></tr>
+    <tr><td><code>POS</code></td><td>Position (pan, tilt)</td><td><code>STORE PRESET.POS.1 Center</code></td></tr>
+  </table>
+
+  <p>To recall a preset, <strong>first select your fixtures</strong> in the Grouping Grid, then click the preset button. Intensity presets fade in over 1 second. Colour presets snap.</p>
+
+  <div class="callout tip">
+    <span class="icon">✓</span>
+    <p>You can use any type label, not just INT/COL/POS. <code>STORE PRESET.FX.1 Strobe</code> is perfectly valid.</p>
+  </div>
+</div>
+
+<!-- FADERS -->
+<div class="section" id="faders">
+  <h2>Faders</h2>
+  <p>The Faders panel provides eight named fader strips. Faders are free-form — they represent a level but do not automatically control specific fixtures unless you wire them up via Links.</p>
+
+  <h3>Using faders</h3>
+  <p>Drag the track up or down to set a level (0–100). Click the <strong>GO</strong> button at the bottom of a strip to toggle between 0 and 80. Click <strong>RELEASE ALL</strong> to zero every fader at once.</p>
+
+  <h3>Labelling faders</h3>
+  <pre>STORE FADER.<span class="val">3</span> <span class="param">Wash</span>
+STORE FADER.<span class="val">1</span> <span class="param">Grand Master</span></pre>
+</div>
+
+<!-- LINKS -->
+<div class="section" id="links">
+  <h2>Links (OSC) <span class="tag">ADVANCED</span></h2>
+  <p>The Links tab lets you map incoming OSC messages (or internal triggers) to any LightScript command. This enables external control from apps like TouchOSC, QLab, Ableton Live, or any OSC-capable software.</p>
+
+  <h3>Creating a link</h3>
+  <p>Go to the <strong>Links</strong> tab and click <strong>+ Add Link</strong>. You'll be prompted for two values:</p>
+  <ul style="color:var(--muted);margin:0 0 14px 20px;line-height:2">
+    <li><strong>Source</strong> — the OSC address to listen for, e.g. <code>/show/cue/$n$</code></li>
+    <li><strong>Target</strong> — the LightScript command to execute, e.g. <code>CUE.$n$</code></li>
+  </ul>
+
+  <h3>Variable capture with $VAR$</h3>
+  <p>Wrap part of the OSC address in dollar signs to capture it as a variable. That variable is then available in the target command:</p>
+
+  <pre><span class="comment"># Source: /show/cue/$n$</span>
+<span class="comment"># Target: CUE.$n$</span>
+<span class="comment"># → receiving /show/cue/5 fires CUE.5</span>
+
+<span class="comment"># Source: /fix/$id$/dimmer</span>
+<span class="comment"># Target: SET FIX $id$ dimmer 100</span>
+<span class="comment"># → receiving /fix/3/dimmer sets fixture 3 to full</span></pre>
+
+  <h3>Deleting a link</h3>
+  <p>Click the ✕ on the link row, or use the command line: <code>DELETE LINK.1</code> (links are numbered 1-indexed from top).</p>
+
+  <div class="callout info">
+    <span class="icon">ℹ</span>
+    <p>OSC hardware integration requires a Raspberry Pi build. The Links tab stores your routing rules now, ready to activate when hardware is connected.</p>
+  </div>
+</div>
+
+<!-- 3D VIZ -->
+<div class="section" id="viz3d">
+  <h2>3D Visualizer <span class="tag">3D VIZ TAB</span></h2>
+  <p>The 3D Visualizer renders your stage in real time. Fixtures are shown as circles hanging from trusses. When their dimmer is above zero, a beam cone is drawn to the floor with a pool glow.</p>
+
+  <h3>Camera controls</h3>
+  <table class="key-table">
+    <tr><th>Control</th><th>Action</th></tr>
+    <tr><td>Drag (left mouse)</td><td>Rotate camera around the stage</td></tr>
+    <tr><td>Scroll wheel</td><td>Zoom in/out</td></tr>
+  </table>
+
+  <h3>What you see</h3>
+  <p>Each fixture shows its ID number. Selected fixtures have an amber ring. The beam colour reflects the fixture's current red/green/blue values. The floor pool scales with dimmer intensity. The HUD in the top-left shows how many fixtures are active.</p>
+
+  <p>The visualizer only renders when the 3D Viz tab is open — it does not consume CPU while you are on other tabs.</p>
+</div>
+
+<!-- SHOW FILES -->
+<div class="section" id="showfiles">
+  <h2>Show Files <span class="tag">.lss</span></h2>
+  <p>Show files use the <code>.lss</code> extension and are plain JSON. They capture your entire show state.</p>
+
+  <h3>What is saved</h3>
+  <ul style="color:var(--muted);margin:0 0 14px 20px;line-height:2">
+    <li>Show name</li>
+    <li>All patched fixtures (profile, mode, address, current parameter values)</li>
+    <li>Full cuelist</li>
+    <li>All presets (INT, COL, POS)</li>
+    <li>Fader labels and levels</li>
+    <li>All links (OSC routing)</li>
+    <li>Variables ($VAR$)</li>
+    <li>Stored effects and timelines</li>
+    <li>Grid column count</li>
+  </ul>
+
+  <h3>Saving</h3>
+  <p>Press <kbd>Ctrl+S</kbd> / <kbd>Cmd+S</kbd> for Save, or <kbd>Ctrl+Shift+S</kbd> for Save As. Use <strong>File → Save Show</strong> from the menu bar.</p>
+
+  <h3>Opening</h3>
+  <p>Press <kbd>Ctrl+O</kbd> / <kbd>Cmd+O</kbd>, or use <strong>File → Open Show</strong>. Loading a show stops all running fades, clears selection, and resets the current cue to -1.</p>
+
+  <h3>New show</h3>
+  <p>Use <strong>File → New Show</strong> (<kbd>Ctrl+N</kbd>). You'll be asked to confirm. All state — including variables, timelines, and effects — is cleared.</p>
+
+  <div class="callout tip">
+    <span class="icon">✓</span>
+    <p>Because <code>.lss</code> files are plain JSON, you can open them in any text editor, version-control them with git, or programmatically generate them.</p>
+  </div>
+</div>
+
+<!-- HOTKEYS -->
+<div class="section" id="hotkeys">
+  <h2>Hotkeys</h2>
+
+  <h3>Application</h3>
+  <table class="key-table">
+    <tr><th>Key</th><th>Action</th></tr>
+    <tr><td><kbd>F11</kbd></td><td>Toggle fullscreen</td></tr>
+    <tr><td><kbd>Ctrl+N</kbd></td><td>New show</td></tr>
+    <tr><td><kbd>Ctrl+O</kbd></td><td>Open show</td></tr>
+    <tr><td><kbd>Ctrl+S</kbd></td><td>Save show</td></tr>
+    <tr><td><kbd>Ctrl+Shift+S</kbd></td><td>Save show as</td></tr>
+    <tr><td><kbd>Ctrl+Shift+I</kbd></td><td>Toggle developer tools</td></tr>
+  </table>
+
+  <h3>Console</h3>
+  <table class="key-table">
+    <tr><th>Key</th><th>Action</th></tr>
+    <tr><td><kbd>Space</kbd></td><td>GO (advance cuelist)</td></tr>
+    <tr><td><kbd>←</kbd></td><td>BACK (previous cue)</td></tr>
+    <tr><td><kbd>Ctrl+L</kbd></td><td>Focus command line</td></tr>
+    <tr><td><kbd>Ctrl+A</kbd></td><td>Select all fixtures</td></tr>
+    <tr><td><kbd>Esc</kbd></td><td>Clear selection / cancel</td></tr>
+    <tr><td><kbd>Ctrl+B</kbd></td><td>sACN Blackout</td></tr>
+    <tr><td><kbd>Ctrl+Shift+O</kbd></td><td>Start sACN output</td></tr>
+    <tr><td><kbd>Ctrl+Shift+P</kbd></td><td>Stop sACN output</td></tr>
+  </table>
+
+  <h3>Command line</h3>
+  <table class="key-table">
+    <tr><th>Key</th><th>Action</th></tr>
+    <tr><td><kbd>Enter</kbd></td><td>Execute command</td></tr>
+    <tr><td><kbd>Shift+Enter</kbd></td><td>Open multiline editor</td></tr>
+    <tr><td><kbd>Tab</kbd></td><td>Accept autocomplete</td></tr>
+    <tr><td><kbd>↑</kbd></td><td>Previous command in history</td></tr>
+    <tr><td><kbd>↓</kbd></td><td>Next command in history</td></tr>
+    <tr><td><kbd>Esc</kbd></td><td>Clear input</td></tr>
+  </table>
+
+  <h3>Multiline editor</h3>
+  <table class="key-table">
+    <tr><th>Key</th><th>Action</th></tr>
+    <tr><td><kbd>Ctrl+Enter</kbd></td><td>Run all lines live (preview)</td></tr>
+    <tr><td><kbd>Ctrl+S</kbd></td><td>Store as effect/timeline</td></tr>
+    <tr><td><kbd>Esc</kbd></td><td>Cancel and close</td></tr>
+    <tr><td><kbd>Tab</kbd></td><td>Insert 2 spaces</td></tr>
+  </table>
+</div>
+
+<!-- TROUBLESHOOTING -->
+<div class="section" id="troubleshooting">
+  <h2>Troubleshooting</h2>
+
+  <h3>App won't start — "electron: command not found"</h3>
+  <p>You need to run <code>npm install</code> inside the <code>lightscript</code> folder first. This downloads Electron. It only needs to be done once.</p>
+
+  <h3>App crashes on launch — EPERM uv_cwd</h3>
+  <p>Your terminal's working directory no longer exists (you probably moved/replaced the folder while inside it). Close the terminal, reopen it, and <code>cd</code> into the folder again.</p>
+
+  <h3>sACN output is ON but fixtures aren't responding</h3>
+  <ul style="color:var(--muted);margin:0 0 14px 20px;line-height:2">
+    <li>Check that the DMX start address in the patch matches the fixture's address setting</li>
+    <li>Check that the fixture profile and mode match the fixture's actual channel count</li>
+    <li>Try setting the network interface explicitly in sACN Settings instead of "Auto"</li>
+    <li>Check your switch supports multicast; try a direct connection or unmanaged switch</li>
+    <li>Verify the fixture/node is on the same subnet as your computer</li>
+  </ul>
+
+  <h3>Fixtures appear in wrong universe</h3>
+  <p>Fixtures are automatically placed into universes based on address: addresses 1–512 go to universe 1, 513–1024 to universe 2, etc. Check the fixture's start address in the Patching tab.</p>
+
+  <h3>Fades don't reach their target value</h3>
+  <p>If you issue a new SET or FADE command on the same fixture and parameter while a fade is running, the previous fade is cancelled. This is by design.</p>
+
+  <h3>Command line shows "No fixtures matched"</h3>
+  <p>Either the fixture IDs you specified don't exist in the patch, or you used <code>sel</code> without any fixtures selected. Check the Grouping Grid.</p>
+
+  <h3>Show file won't load</h3>
+  <p>The file may be from an older version. Open it in a text editor and check the JSON is valid. The <code>version</code> field should be <code>2</code> for v2.0 show files.</p>
+
+  <hr/>
+
+  <p style="color:var(--faint);font-size:13px">LightScript v2.0 — Built with Electron. sACN output implements ANSI E1.31-2018.</p>
+</div>
+
+</main>
+
+<footer id="footer">
+  LightScript User Manual v2.0 &nbsp;·&nbsp; sACN E1.31 &nbsp;·&nbsp; Built with Electron
+</footer>
+
+<script>
+  // Sidebar active link tracking
+  const sections = document.querySelectorAll('.section[id]');
+  const links    = document.querySelectorAll('#sidebar a');
+
+  const obs = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        links.forEach(l => l.classList.remove('active'));
+        const active = document.querySelector(`#sidebar a[href="#${e.target.id}"]`);
+        if (active) active.classList.add('active');
+      }
+    });
+  }, { rootMargin: '-20% 0px -70% 0px', threshold: 0 });
+
+  sections.forEach(s => obs.observe(s));
+</script>
+</body>
+</html>
