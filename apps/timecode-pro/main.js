@@ -4,6 +4,12 @@ const fs    = require('fs');
 const http  = require('http');
 const os    = require('os');
 
+// ── StageOS Event Bus ────────────────────────────────────────
+// Lets Timecode Pro tell Booth, LightScript, and StageFlow when a
+// cue/transport command fires, and react when THEY trigger a
+// show-wide blackout. Safe no-op if the output daemon isn't running.
+const stageBus = require('./stageos-eventbus')('timecode-pro');
+
 let mainWindow, videoWindow = null;
 let OSC, midi;
 let oscServer = null;
@@ -33,9 +39,9 @@ function handleMobileMessage(msg) {
     case 'midi-send':  sendMidi(msg.status,msg.data1,msg.data2); send('midi-in',{status:msg.status,data1:msg.data1,data2:msg.data2,ts:Date.now()}); break;
     case 'fader':      sendOsc(msg.path,[{type:'f',value:msg.value}]); break;
     case 'mute':       sendOsc(msg.path,[{type:'i',value:msg.value}]); break;
-    case 'go':         send('menu-go'); break;
-    case 'play-pause': send('menu-play-pause'); break;
-    case 'stop':       send('menu-stop'); break;
+    case 'go':         send('menu-go'); stageBus.emit('transport-go', { from:'mobile' }); break;
+    case 'play-pause': send('menu-play-pause'); stageBus.emit('transport-play-pause', { from:'mobile' }); break;
+    case 'stop':       send('menu-stop'); stageBus.emit('transport-stop', { from:'mobile' }); break;
     case 'ion-cmd':    sendOsc('/eos/cmd',[{type:'s',value:msg.cmd}]); break;
     case 'atem-cut':   sendOsc('/atem/cut',[]); break;
     case 'atem-preview': sendOsc('/atem/preview',[{type:'i',value:msg.input}]); break;
@@ -191,7 +197,7 @@ ipcMain.handle('http-server-status', ()        => ({running:!!httpServer,ip:getL
 ipcMain.handle('http-broadcast',     (_,msg)   => { broadcastToMobile(msg); return {ok:true}; });
 ipcMain.handle('osc-start',  (_,cfg)        => startOscServer(cfg));
 ipcMain.handle('osc-stop',   ()             => { stopOscServer(); return {ok:true}; });
-ipcMain.handle('osc-send',   (_,addr,args)  => sendOsc(addr,args));
+ipcMain.handle('osc-send',   (_,addr,args)  => { stageBus.emit('cue-fired', { address:addr, args }); return sendOsc(addr,args); });
 ipcMain.handle('osc-config', ()             => oscConfig);
 ipcMain.handle('midi-get-ports',   ()           => getMidiPorts());
 ipcMain.handle('midi-open-input',  (_,idx)      => openMidiInput(idx));
@@ -224,3 +230,20 @@ function buildMenu() {
 
 app.on('window-all-closed', () => { stopHttpServer(); stopOscServer(); closeMidi(); if(process.platform!=='darwin')app.quit(); });
 app.on('activate', () => { if(BrowserWindow.getAllWindows().length===0)createWindow(); });
+
+// ── StageOS Event Bus: react to other apps ──────────────────
+// If Booth, LightScript, or StageFlow calls a show-wide blackout,
+// reflect it in Timecode Pro's UI (renderer decides what to do with it).
+stageBus.on('blackout', (data, source) => {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('stagebus-blackout', { source, data });
+  }
+});
+
+// Surface cue fires / slide changes from other apps so Timecode Pro's
+// UI can show "Booth fired cue 5" style notifications if desired.
+stageBus.onAny((event, data, source) => {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('stagebus-event', { event, data, source });
+  }
+});
