@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>StageFlow Output</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    width: 100vw; height: 100vh;
+    background: #000;
+    overflow: hidden;
+    font-family: 'Segoe UI', 'Georgia', system-ui, sans-serif;
+  }
+
+  #stage {
+    width: 100vw; height: 100vh;
+    position: relative;
+    background: #000;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  /* Background layers */
+  #bg-layer {
+    position: absolute; inset: 0;
+    transition: opacity 0.4s ease;
+    z-index: 0;
+  }
+
+  #bg-layer-next {
+    position: absolute; inset: 0;
+    z-index: 1;
+    opacity: 0;
+  }
+
+  /* Text layers */
+  #text-layer {
+    position: absolute; inset: 0;
+    z-index: 10;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    padding: 8vw;
+    transition: opacity 0.4s ease;
+  }
+
+  #text-layer-next {
+    position: absolute; inset: 0;
+    z-index: 11;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    padding: 8vw;
+    opacity: 0;
+    transition: opacity 0.4s ease;
+  }
+
+  .main-text {
+    text-align: center;
+    font-weight: 700;
+    line-height: 1.2;
+    letter-spacing: -0.01em;
+    text-shadow: 0 2px 32px rgba(0,0,0,0.7), 0 1px 4px rgba(0,0,0,0.5);
+    width: 100%;
+    word-break: break-word;
+  }
+
+  .sub-text {
+    text-align: center;
+    font-weight: 400;
+    margin-top: 0.4em;
+    opacity: 0.75;
+    text-shadow: 0 1px 8px rgba(0,0,0,0.6);
+  }
+
+  /* Transition classes */
+  .fade-out { opacity: 0 !important; }
+  .fade-in { opacity: 1 !important; }
+
+  /* Slide-up animation */
+  @keyframes slideUpIn {
+    from { transform: translateY(40px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+  @keyframes slideUpOut {
+    from { transform: translateY(0); opacity: 1; }
+    to { transform: translateY(-40px); opacity: 0; }
+  }
+
+  /* Zoom animation */
+  @keyframes zoomIn {
+    from { transform: scale(0.92); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+  }
+
+  .anim-slide-up { animation: slideUpIn 0.4s cubic-bezier(.22,.68,0,1.2) forwards; }
+  .anim-zoom { animation: zoomIn 0.4s cubic-bezier(.22,.68,0,1.2) forwards; }
+
+  /* Black screen state */
+  #black-cover {
+    position: absolute; inset: 0;
+    background: #000;
+    z-index: 100;
+    opacity: 1;
+    transition: opacity 0.4s ease;
+  }
+</style>
+</head>
+<body>
+<div id="stage">
+  <div id="bg-layer"></div>
+  <div id="bg-layer-next"></div>
+  <div id="text-layer">
+    <div class="main-text" id="main-text" style="color:#fff;font-size:10vw;"></div>
+    <div class="sub-text" id="sub-text" style="color:#fff;font-size:3vw;"></div>
+  </div>
+  <div id="text-layer-next">
+    <div class="main-text" id="main-text-next" style="color:#fff;font-size:10vw;"></div>
+    <div class="sub-text" id="sub-text-next" style="color:#fff;font-size:3vw;"></div>
+  </div>
+  <div id="black-cover"></div>
+</div>
+
+<script>
+const { ipcRenderer } = require('electron');
+
+const bgLayer = document.getElementById('bg-layer');
+const bgNext = document.getElementById('bg-layer-next');
+const textLayer = document.getElementById('text-layer');
+const textNext = document.getElementById('text-layer-next');
+const mainText = document.getElementById('main-text');
+const subText = document.getElementById('sub-text');
+const mainTextNext = document.getElementById('main-text-next');
+const subTextNext = document.getElementById('sub-text-next');
+const blackCover = document.getElementById('black-cover');
+
+let isBlack = true;
+
+function applyBg(el, bgKey) {
+  const gradients = {
+    'solid-black': '#000000',
+    'solid-dark': '#0d1020',
+    'solid-white': '#ffffff',
+    'gradient-dark': 'linear-gradient(135deg, #0f1117 0%, #1e2440 100%)',
+    'gradient-blue': 'linear-gradient(135deg, #0a1a3a 0%, #1e3a6e 100%)',
+    'gradient-purple': 'linear-gradient(135deg, #1a0a3a 0%, #3a1a6e 100%)',
+    'gradient-warm': 'linear-gradient(135deg, #2a1200 0%, #6e3a00 100%)',
+  };
+  el.style.background = gradients[bgKey] || '#000';
+}
+
+function calcSize(text, baseSize) {
+  const vw = window.innerWidth;
+  const lines = (text || '').split('\n');
+  const longest = lines.reduce((a, b) => a.length > b.length ? a : b, '');
+  const charsPerLine = longest.length || 1;
+  const px = Math.min(baseSize || 64, (vw * 0.84) / (charsPerLine * 0.56));
+  const lineFactor = lines.length > 2 ? 0.8 : 1;
+  return Math.max(24, Math.round(px * lineFactor));
+}
+
+function renderSlide(el, subEl, data) {
+  const lines = (data.text || '').split('\n');
+  el.innerHTML = lines.map(l => `<span>${l}</span>`).join('<br>');
+  el.style.color = data.textColor || '#ffffff';
+  const px = calcSize(data.text, data.size);
+  el.style.fontSize = px + 'px';
+  const subPx = Math.round(px * 0.38);
+  subEl.textContent = data.subtext || '';
+  subEl.style.color = data.textColor || '#ffffff';
+  subEl.style.fontSize = Math.max(16, subPx) + 'px';
+}
+
+function doTransition(data, transition, speed) {
+  const dur = speed || 400;
+  const ms = `${dur}ms`;
+
+  applyBg(bgNext, data.bg || 'solid-black');
+  renderSlide(mainTextNext, subTextNext, data);
+
+  if (transition === 'cut') {
+    applyBg(bgLayer, data.bg || 'solid-black');
+    renderSlide(mainText, subText, data);
+    return;
+  }
+
+  if (transition === 'slide-up') {
+    textNext.style.opacity = '0';
+    textNext.style.animation = 'none';
+    textNext.style.transform = 'translateY(40px)';
+    void textNext.offsetWidth;
+    textNext.style.transition = `opacity ${ms}, transform ${ms} cubic-bezier(.22,.68,0,1.2)`;
+    textLayer.style.transition = `opacity ${ms}`;
+    textLayer.style.opacity = '0';
+    textNext.style.opacity = '1';
+    textNext.style.transform = 'translateY(0)';
+    bgLayer.style.transition = `opacity ${ms}`;
+    bgLayer.style.opacity = '0';
+    bgNext.style.transition = `opacity ${ms}`;
+    bgNext.style.opacity = '1';
+  } else if (transition === 'zoom') {
+    textNext.style.opacity = '0';
+    textNext.style.transform = 'scale(0.92)';
+    void textNext.offsetWidth;
+    textNext.style.transition = `opacity ${ms}, transform ${ms} cubic-bezier(.22,.68,0,1.2)`;
+    textLayer.style.transition = `opacity ${ms}`;
+    textLayer.style.opacity = '0';
+    textNext.style.opacity = '1';
+    textNext.style.transform = 'scale(1)';
+    bgLayer.style.transition = `opacity ${ms}`;
+    bgLayer.style.opacity = '0';
+    bgNext.style.transition = `opacity ${ms}`;
+    bgNext.style.opacity = '1';
+  } else {
+    // fade (default)
+    textLayer.style.transition = `opacity ${ms}`;
+    textLayer.style.opacity = '0';
+    textNext.style.transition = `opacity ${ms}`;
+    bgLayer.style.transition = `opacity ${ms}`;
+    bgLayer.style.opacity = '0';
+    bgNext.style.transition = `opacity ${ms}`;
+    bgNext.style.opacity = '1';
+    setTimeout(() => {
+      textNext.style.opacity = '1';
+    }, dur * 0.3);
+  }
+
+  setTimeout(() => {
+    applyBg(bgLayer, data.bg || 'solid-black');
+    renderSlide(mainText, subText, data);
+    bgLayer.style.opacity = '1';
+    bgLayer.style.transition = 'none';
+    textLayer.style.opacity = '1';
+    textLayer.style.transition = 'none';
+    bgNext.style.opacity = '0';
+    textNext.style.opacity = '0';
+  }, dur + 50);
+}
+
+ipcRenderer.on('render-slide', (event, data) => {
+  if (isBlack) {
+    blackCover.style.opacity = '0';
+    isBlack = false;
+  }
+  doTransition(data, data.transition || 'fade', data.transitionSpeed || 400);
+});
+
+ipcRenderer.on('clear-screen', () => {
+  blackCover.style.opacity = '1';
+  isBlack = true;
+});
+
+// Start black
+blackCover.style.transition = 'opacity 0.5s ease';
+</script>
+</body>
+</html>
