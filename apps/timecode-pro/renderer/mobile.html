@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<title>Booth Copilot</title>
+<style>
+:root{
+  --bg0:#07080e;--bg1:#0d0f1a;--bg2:#111420;--bg3:#181c2a;--bg4:#1f2438;
+  --teal2:#1E3A3E;--teal3:#3A5F63;--teal4:#4A7F83;--teal5:#5A9FA3;
+  --accent:#00e5ff;--green:#39ff80;--red:#ff3a5c;--yellow:#ffd166;--purple:#a78bfa;
+  --text:#e8e8f0;--text2:#9090b0;--text3:#44445a;
+  --border:rgba(255,255,255,0.08);
+  --font-mono:'JetBrains Mono','Courier New',monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;background:var(--bg0);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:14px;overflow:hidden;overscroll-behavior:none;}
+::-webkit-scrollbar{display:none;}
+
+/* ── LAYOUT ── */
+#app{display:flex;flex-direction:column;height:100vh;height:100dvh;}
+
+/* ── HEADER ── */
+#header{
+  height:52px;background:var(--teal2);display:flex;align-items:center;
+  padding:0 14px;gap:10px;flex-shrink:0;border-bottom:1px solid var(--border);
+}
+#header img{width:30px;height:30px;border-radius:4px;object-fit:cover;}
+#header-title{font-size:15px;font-weight:700;color:var(--accent);flex:1;}
+#ws-dot{width:8px;height:8px;border-radius:50%;background:var(--red);transition:background 0.3s;flex-shrink:0;}
+#ws-dot.on{background:var(--green);box-shadow:0 0 8px var(--green);}
+#ws-label{font-family:var(--font-mono);font-size:9px;color:var(--text2);}
+
+/* ── TAB NAV ── */
+#tab-nav{
+  display:flex;background:var(--bg1);border-bottom:1px solid var(--border);flex-shrink:0;
+  overflow-x:auto;
+}
+.tab-btn{
+  flex:1;min-width:72px;padding:10px 6px;background:none;border:none;color:var(--text2);
+  font-size:11px;font-weight:600;letter-spacing:0.04em;cursor:pointer;
+  border-bottom:2px solid transparent;white-space:nowrap;transition:all 0.15s;
+}
+.tab-btn.active{color:var(--accent);border-bottom-color:var(--accent);}
+
+/* ── PAGES ── */
+#pages{flex:1;overflow:hidden;position:relative;}
+.page{position:absolute;inset:0;overflow-y:auto;padding:12px;display:none;-webkit-overflow-scrolling:touch;}
+.page.active{display:block;}
+
+/* ── TRANSPORT ── */
+.transport{display:flex;gap:8px;margin-bottom:14px;}
+.t-btn{flex:1;height:52px;border:none;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer;letter-spacing:0.06em;transition:all 0.12s;active:scale(0.96);}
+.t-btn:active{transform:scale(0.96);}
+.btn-go{background:var(--green);color:#000;}
+.btn-play{background:rgba(0,229,255,0.2);border:1px solid var(--accent);color:var(--accent);}
+.btn-stop{background:var(--red);color:#fff;}
+
+/* ── SECTION ── */
+.section{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:12px;}
+.sec-title{font-family:var(--font-mono);font-size:9px;letter-spacing:0.14em;text-transform:uppercase;color:var(--text3);margin-bottom:10px;}
+
+/* ── FADERS ── */
+.fader-scroll{display:flex;gap:10px;overflow-x:auto;padding-bottom:6px;}
+.fader{display:flex;flex-direction:column;align-items:center;gap:5px;flex-shrink:0;width:52px;}
+.ch-label{font-family:var(--font-mono);font-size:9px;color:var(--text2);text-align:center;max-width:52px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.fader-track{width:36px;height:130px;background:var(--bg4);border-radius:6px;position:relative;touch-action:none;cursor:pointer;}
+.fader-fill{position:absolute;bottom:0;left:0;right:0;background:var(--accent);border-radius:0 0 6px 6px;height:75%;opacity:0.85;transition:height 0.05s;}
+.fader-thumb{position:absolute;left:50%;transform:translateX(-50%);width:30px;height:10px;background:#fff;border-radius:3px;bottom:calc(75% - 5px);transition:bottom 0.05s;}
+.db-label{font-family:var(--font-mono);font-size:9px;color:var(--text2);}
+.mute-btn{width:100%;padding:5px 0;background:var(--bg3);border:1px solid var(--border);border-radius:5px;color:var(--text2);font-size:10px;cursor:pointer;}
+.mute-btn.muted{background:rgba(255,58,92,0.25);border-color:var(--red);color:var(--red);}
+.layer-tabs{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px;}
+.layer-tab{padding:5px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:5px;color:var(--text2);font-size:11px;cursor:pointer;}
+.layer-tab.active{background:var(--teal4);color:#fff;border-color:var(--teal5);}
+
+/* ── ATEM ── */
+.atem-section{margin-bottom:10px;}
+.atem-label{font-family:var(--font-mono);font-size:10px;padding:4px 10px;border-radius:4px;margin-bottom:6px;display:inline-block;}
+.atem-label.prev{background:var(--green);color:#000;}
+.atem-label.prog{background:var(--red);color:#fff;}
+.atem-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:5px;margin-bottom:8px;}
+.atem-btn{height:40px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:14px;font-weight:600;cursor:pointer;}
+.atem-btn:active{transform:scale(0.94);}
+.atem-btn.prev-sel{background:#1a5c1a;border-color:var(--green);}
+.atem-btn.prog-sel{background:#5c1a1a;border-color:var(--red);}
+.cut-btn{width:100%;height:46px;background:var(--accent);color:#000;font-size:14px;font-weight:700;border:none;border-radius:8px;cursor:pointer;letter-spacing:0.1em;}
+.cut-btn:active{transform:scale(0.97);}
+
+/* ── ION ── */
+.ion-input{display:flex;gap:6px;margin-bottom:8px;}
+.ion-input input{flex:1;background:var(--bg0);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:var(--font-mono);font-size:13px;padding:8px 10px;outline:none;}
+.ion-input button{padding:8px 14px;background:var(--teal4);border:none;border-radius:6px;color:#fff;font-weight:700;cursor:pointer;}
+.ion-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;}
+.ion-btn{padding:10px 4px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:11px;cursor:pointer;}
+.ion-btn:active{background:var(--bg4);}
+
+/* ── OSC SEND ── */
+.osc-form{display:flex;flex-direction:column;gap:8px;}
+.inp{background:var(--bg0);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:var(--font-mono);font-size:12px;padding:8px 10px;width:100%;outline:none;}
+.send-btn{width:100%;height:44px;background:rgba(0,229,255,0.15);border:1px solid var(--accent);border-radius:8px;color:var(--accent);font-weight:700;font-size:13px;letter-spacing:0.08em;cursor:pointer;}
+.send-btn:active{background:var(--accent);color:#000;}
+.quick-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px;}
+.quick-btn{padding:12px 8px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:11px;text-align:center;cursor:pointer;}
+.quick-btn:active{background:var(--bg4);}
+
+/* ── STATUS ── */
+#status-bar{height:28px;background:var(--bg0);border-top:1px solid var(--border);display:flex;align-items:center;padding:0 12px;font-family:var(--font-mono);font-size:10px;color:var(--text3);flex-shrink:0;}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <div id="header">
+    <img src="/assets/logo.png" alt=""/>
+    <span id="header-title">Booth Copilot</span>
+    <span id="ws-label">DISCONNECTED</span>
+    <div id="ws-dot"></div>
+  </div>
+
+  <div id="tab-nav">
+    <button class="tab-btn active" onclick="showPage('transport')">Transport</button>
+    <button class="tab-btn" onclick="showPage('audio')">Audio</button>
+    <button class="tab-btn" onclick="showPage('lighting')">Lighting</button>
+    <button class="tab-btn" onclick="showPage('visual')">Visual</button>
+    <button class="tab-btn" onclick="showPage('osc')">OSC</button>
+  </div>
+
+  <div id="pages">
+
+    <!-- TRANSPORT -->
+    <div id="page-transport" class="page active">
+      <div class="transport">
+        <button class="t-btn btn-go"   onclick="wsSend({type:'go'})">GO</button>
+        <button class="t-btn btn-play" id="playBtn" onclick="togglePlay()">▶ PLAY</button>
+        <button class="t-btn btn-stop" onclick="wsSend({type:'stop'})">■ STOP</button>
+      </div>
+      <div class="section">
+        <div class="sec-title">Timecode</div>
+        <div style="font-family:var(--font-mono);font-size:32px;font-weight:300;color:var(--accent);text-align:center;letter-spacing:0.06em;padding:8px 0;" id="mobileClock">00:00:00:00</div>
+      </div>
+      <div class="section">
+        <div class="sec-title">Quick OSC</div>
+        <div class="quick-grid" id="quickGrid">
+          <div class="quick-btn" onclick="quickOsc('/eos/go','')">Ion GO</div>
+          <div class="quick-btn" onclick="quickOsc('/eos/back','')">Ion BACK</div>
+          <div class="quick-btn" onclick="quickOsc('/eos/fader/1/1/level','')">LX Fader ↑</div>
+          <div class="quick-btn" onclick="quickOsc('/eos/fader/1/1/level','')">LX Fader ↓</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- AUDIO -->
+    <div id="page-audio" class="page">
+      <div class="section">
+        <div class="sec-title">Midas M32 / Wing</div>
+        <div class="layer-tabs" id="layerTabs">
+          <div class="layer-tab active" onclick="showLayer('layer-ch1',this)">Ch 1–8</div>
+          <div class="layer-tab" onclick="showLayer('layer-ch2',this)">Ch 9–16</div>
+          <div class="layer-tab" onclick="showLayer('layer-ch3',this)">Ch 17–24</div>
+          <div class="layer-tab" onclick="showLayer('layer-ch4',this)">Ch 25–32</div>
+          <div class="layer-tab" onclick="showLayer('layer-aux',this)">Aux</div>
+          <div class="layer-tab" onclick="showLayer('layer-main',this)">Main</div>
+        </div>
+        <div id="layer-ch1"   class="fader-scroll"></div>
+        <div id="layer-ch2"   class="fader-scroll" style="display:none"></div>
+        <div id="layer-ch3"   class="fader-scroll" style="display:none"></div>
+        <div id="layer-ch4"   class="fader-scroll" style="display:none"></div>
+        <div id="layer-aux"   class="fader-scroll" style="display:none"></div>
+        <div id="layer-main"  class="fader-scroll" style="display:none"></div>
+      </div>
+    </div>
+
+    <!-- LIGHTING -->
+    <div id="page-lighting" class="page">
+      <div class="section">
+        <div class="sec-title">ETC Ion XE</div>
+        <div class="ion-input">
+          <input id="ionCmd" type="text" placeholder="Command line…" />
+          <button onclick="sendIonCmd()">Enter</button>
+        </div>
+        <div class="ion-grid">
+          <button class="ion-btn" onclick="ionAppend('1')">1</button>
+          <button class="ion-btn" onclick="ionAppend('2')">2</button>
+          <button class="ion-btn" onclick="ionAppend('3')">3</button>
+          <button class="ion-btn" onclick="ionAppend('4')">4</button>
+          <button class="ion-btn" onclick="ionAppend('5')">5</button>
+          <button class="ion-btn" onclick="ionAppend('6')">6</button>
+          <button class="ion-btn" onclick="ionAppend('7')">7</button>
+          <button class="ion-btn" onclick="ionAppend('8')">8</button>
+          <button class="ion-btn" onclick="ionAppend('9')">9</button>
+          <button class="ion-btn" onclick="ionAppend('0')">0</button>
+          <button class="ion-btn" onclick="ionAppend('.')">.</button>
+          <button class="ion-btn" onclick="ionAppend('Cue Q')">Cue Q</button>
+          <button class="ion-btn" onclick="ionAppend('Record R')">Record R</button>
+          <button class="ion-btn" onclick="ionAppend('Update ai')">Update</button>
+          <button class="ion-btn" onclick="ionAppend('Go')">Go</button>
+          <button class="ion-btn" onclick="document.getElementById('ionCmd').value=''">Clear</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- VISUAL -->
+    <div id="page-visual" class="page">
+      <div class="section">
+        <div class="sec-title">ATEM Switcher</div>
+        <div class="atem-section">
+          <div class="atem-label prev">PREVIEW</div>
+          <div class="atem-grid" id="mob-preview"></div>
+        </div>
+        <div class="atem-section">
+          <div class="atem-label prog">PROGRAM</div>
+          <div class="atem-grid" id="mob-program"></div>
+        </div>
+        <button class="cut-btn" onclick="atemCut()">CUT / SWITCH</button>
+      </div>
+    </div>
+
+    <!-- OSC -->
+    <div id="page-osc" class="page">
+      <div class="section">
+        <div class="sec-title">Send OSC</div>
+        <div class="osc-form">
+          <input class="inp" id="oscAddr" value="/cue/1/start" placeholder="OSC Address"/>
+          <input class="inp" id="oscArgs" value='[{"type":"i","value":1}]' placeholder='Args JSON e.g. [{"type":"i","value":1}]'/>
+          <button class="send-btn" onclick="sendOscManual()">Send ▶</button>
+        </div>
+        <div id="osc-status" style="font-family:var(--font-mono);font-size:10px;color:var(--text2);margin-top:6px;min-height:16px;"></div>
+      </div>
+      <div class="section">
+        <div class="sec-title">Recent Incoming</div>
+        <div id="oscLog" style="font-family:var(--font-mono);font-size:10px;color:var(--text2);max-height:200px;overflow-y:auto;"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <div id="status-bar" id="statusBar">Connecting…</div>
+</div>
+
+<script>
+(function() {
+  let ws = null;
+  let reconnectTimer = null;
+  let playing = false;
+  let atemPrev = 1, atemProg = 3;
+  const mutedChannels = new Set();
+
+  // ── WebSocket ──
+  function connect() {
+    const wsUrl = 'ws://' + location.host;
+    ws = new WebSocket(wsUrl);
+    ws.onopen = () => {
+      document.getElementById('ws-dot').classList.add('on');
+      document.getElementById('ws-label').textContent = 'LIVE';
+      setStatus('Connected to Booth Copilot');
+      clearTimeout(reconnectTimer);
+    };
+    ws.onclose = () => {
+      document.getElementById('ws-dot').classList.remove('on');
+      document.getElementById('ws-label').textContent = 'OFFLINE';
+      setStatus('Disconnected — reconnecting…');
+      reconnectTimer = setTimeout(connect, 2000);
+    };
+    ws.onerror = () => ws.close();
+    ws.onmessage = (e) => {
+      try { handleMsg(JSON.parse(e.data)); } catch(err) {}
+    };
+  }
+
+  function wsSend(obj) {
+    if (ws && ws.readyState === 1) ws.send(JSON.stringify(obj));
+    else setStatus('Not connected');
+  }
+  window.wsSend = wsSend;
+
+  function handleMsg(msg) {
+    switch(msg.type) {
+      case 'hello':
+        setStatus('Connected · ' + msg.ip + ':' + msg.port);
+        break;
+      case 'tc-tick':
+        document.getElementById('mobileClock').textContent = msg.tc || '00:00:00:00';
+        break;
+      case 'osc-in':
+        addOscLog(msg.address, JSON.stringify(msg.args));
+        break;
+      case 'play-state':
+        playing = msg.playing;
+        document.getElementById('playBtn').textContent = playing ? '⏸ PAUSE' : '▶ PLAY';
+        break;
+    }
+  }
+
+  function setStatus(msg) {
+    const el = document.getElementById('status-bar');
+    if (el) el.textContent = msg;
+  }
+
+  function addOscLog(addr, args) {
+    const log = document.getElementById('oscLog');
+    if (!log) return;
+    const row = document.createElement('div');
+    row.style.cssText = 'padding:2px 0;border-bottom:1px solid rgba(255,255,255,0.04);';
+    row.textContent = addr + '  ' + args;
+    log.appendChild(row);
+    log.scrollTop = log.scrollHeight;
+    while (log.children.length > 60) log.removeChild(log.firstChild);
+  }
+
+  // ── Tabs ──
+  window.showPage = function(id) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('page-' + id).classList.add('active');
+    event.target.classList.add('active');
+  };
+
+  // ── Transport ──
+  window.togglePlay = function() {
+    wsSend({ type: 'play-pause' });
+    playing = !playing;
+    document.getElementById('playBtn').textContent = playing ? '⏸ PAUSE' : '▶ PLAY';
+  };
+
+  // ── Faders ──
+  const LAYERS = {
+    'layer-ch1':  Array.from({length:8},(_,i)=>{return{ch:`ch${i+1}`,label:`Ch ${i+1}`};}),
+    'layer-ch2':  Array.from({length:8},(_,i)=>{return{ch:`ch${i+9}`,label:`Ch ${i+9}`};}),
+    'layer-ch3':  Array.from({length:8},(_,i)=>{return{ch:`ch${i+17}`,label:`Ch ${i+17}`};}),
+    'layer-ch4':  Array.from({length:8},(_,i)=>{return{ch:`ch${i+25}`,label:`Ch ${i+25}`};}),
+    'layer-aux':  Array.from({length:8},(_,i)=>{return{ch:`aux${i+1}`,label:`Aux ${i+1}`};}),
+    'layer-main': [{ch:'main',label:'Main'}],
+  };
+
+  function faderPath(ch) {
+    if (ch.startsWith('ch'))  return '/ch/'    + ch.slice(2).padStart(2,'0') + '/mix/fader';
+    if (ch.startsWith('aux')) return '/auxin/' + ch.slice(3).padStart(2,'0') + '/mix/fader';
+    if (ch === 'main')        return '/main/st/mix/fader';
+    return '';
+  }
+  function mutePath(ch) {
+    if (ch.startsWith('ch'))  return '/ch/'    + ch.slice(2).padStart(2,'0') + '/mix/on';
+    if (ch.startsWith('aux')) return '/auxin/' + ch.slice(3).padStart(2,'0') + '/mix/on';
+    if (ch === 'main')        return '/main/st/mix/on';
+    return '';
+  }
+
+  function buildFader(container, ch, label) {
+    const el = document.createElement('div');
+    el.className = 'fader';
+    el.innerHTML = `
+      <div class="ch-label">${label}</div>
+      <div class="fader-track" data-ch="${ch}">
+        <div class="fader-fill" style="height:75%"></div>
+        <div class="fader-thumb" style="bottom:calc(75% - 5px)"></div>
+      </div>
+      <div class="db-label">0.0 dB</div>
+      <button class="mute-btn" data-ch="${ch}">Mute</button>
+    `;
+    const track = el.querySelector('.fader-track');
+    const fill  = el.querySelector('.fader-fill');
+    const thumb = el.querySelector('.fader-thumb');
+    const dbl   = el.querySelector('.db-label');
+    const muteBtn = el.querySelector('.mute-btn');
+
+    let dragging = false, startY = 0, startH = 75;
+
+    function setLevel(pct) {
+      pct = Math.max(0, Math.min(100, pct));
+      fill.style.height = pct + '%';
+      thumb.style.bottom = 'calc(' + pct + '% - 5px)';
+      const db = pct === 0 ? '-∞' : ((pct/100*70)-60).toFixed(1);
+      dbl.textContent = db + ' dB';
+      wsSend({ type:'fader', path:faderPath(ch), value:pct/100 });
+    }
+
+    track.addEventListener('touchstart', e => {
+      dragging = true; startY = e.touches[0].clientY;
+      startH = parseFloat(fill.style.height)||75;
+      e.preventDefault();
+    }, {passive:false});
+    track.addEventListener('touchmove', e => {
+      if (!dragging) return;
+      const dy = startY - e.touches[0].clientY;
+      setLevel(startH + dy / track.offsetHeight * 100);
+      e.preventDefault();
+    }, {passive:false});
+    track.addEventListener('touchend', () => dragging = false);
+
+    muteBtn.addEventListener('click', () => {
+      const muted = mutedChannels.has(ch);
+      if (muted) { mutedChannels.delete(ch); muteBtn.classList.remove('muted'); muteBtn.textContent='Mute'; wsSend({type:'mute',path:mutePath(ch),value:1}); }
+      else { mutedChannels.add(ch); muteBtn.classList.add('muted'); muteBtn.textContent='Unmute'; wsSend({type:'mute',path:mutePath(ch),value:0}); }
+    });
+
+    container.appendChild(el);
+  }
+
+  function buildAllFaders() {
+    Object.entries(LAYERS).forEach(([layerId, channels]) => {
+      const container = document.getElementById(layerId);
+      if (!container) return;
+      channels.forEach(({ch, label}) => buildFader(container, ch, label));
+    });
+  }
+
+  window.showLayer = function(id, btn) {
+    document.querySelectorAll('.fader-scroll').forEach(el => el.style.display='none');
+    document.getElementById(id).style.display = 'flex';
+    document.querySelectorAll('.layer-tab').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  };
+
+  // ── Ion ──
+  window.ionAppend = function(cmd) {
+    const el = document.getElementById('ionCmd');
+    el.value = (el.value + ' ' + cmd).trim();
+  };
+  window.sendIonCmd = function() {
+    const cmd = document.getElementById('ionCmd').value;
+    if (!cmd) return;
+    wsSend({ type:'ion-cmd', cmd });
+    document.getElementById('ionCmd').value = '';
+    setStatus('Ion: ' + cmd);
+  };
+
+  // ── ATEM ──
+  function buildAtem() {
+    ['mob-preview','mob-program'].forEach(gridId => {
+      const grid = document.getElementById(gridId);
+      grid.innerHTML = '';
+      const isPrev = gridId === 'mob-preview';
+      for (let i = 1; i <= 10; i++) {
+        const btn = document.createElement('button');
+        btn.className = 'atem-btn';
+        btn.textContent = i;
+        if ((isPrev && i===atemPrev)||(!isPrev && i===atemProg)) btn.classList.add(isPrev?'prev-sel':'prog-sel');
+        btn.onclick = () => {
+          grid.querySelectorAll('.atem-btn').forEach(b=>b.classList.remove('prev-sel','prog-sel'));
+          btn.classList.add(isPrev?'prev-sel':'prog-sel');
+          if (isPrev) { atemPrev=i; wsSend({type:'atem-preview',input:i}); }
+          else        { atemProg=i; wsSend({type:'atem-program',input:i}); }
+        };
+        grid.appendChild(btn);
+      }
+    });
+  }
+  window.atemCut = function() {
+    [atemPrev,atemProg] = [atemProg,atemPrev];
+    buildAtem();
+    wsSend({ type:'atem-cut' });
+    setStatus('ATEM cut executed.');
+  };
+
+  // ── OSC manual send ──
+  window.sendOscManual = function() {
+    const addr = document.getElementById('oscAddr').value;
+    let args = [];
+    try { args = JSON.parse(document.getElementById('oscArgs').value || '[]'); } catch(e) { document.getElementById('osc-status').textContent='Invalid JSON args'; return; }
+    wsSend({ type:'osc-send', address:addr, args });
+    document.getElementById('osc-status').textContent = 'Sent: ' + addr;
+    setTimeout(()=>{ document.getElementById('osc-status').textContent=''; }, 2000);
+  };
+
+  window.quickOsc = function(addr) {
+    wsSend({ type:'osc-send', address:addr, args:[] });
+    setStatus('Sent: ' + addr);
+  };
+
+  // ── Init ──
+  buildAllFaders();
+  buildAtem();
+  connect();
+
+})();
+</script>
+</body>
+</html>
