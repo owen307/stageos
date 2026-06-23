@@ -44,6 +44,25 @@ wss.on('connection', c => {
         sendArtNet(cmd.universe, state.dmx[cmd.universe]);
       }
       if (cmd.type==='ping') c.send(JSON.stringify({type:'pong',ts:Date.now()}));
+
+      // ── Event Bus: relay show events between apps ──────────
+      // Booth, LightScript, StageFlow, Timecode Pro all connect here.
+      // Any app can emit { type:'show-event', event:'cue-fired', data:{...}, source:'booth' }
+      // and every OTHER connected app receives it. This lets apps react
+      // to each other's actions (cue fires, blackout, slide changes,
+      // transport state) without knowing about each other directly.
+      if (cmd.type==='show-event') {
+        const out = JSON.stringify({
+          type:   'show-event',
+          event:  cmd.event,
+          data:   cmd.data || {},
+          source: cmd.source || 'unknown',
+          ts:     Date.now()
+        });
+        state.clients.forEach(other => {
+          if (other !== c) { try { other.send(out); } catch(e) {} }
+        });
+      }
     } catch(e) {}
   });
   c.on('close', () => state.clients.delete(c));
