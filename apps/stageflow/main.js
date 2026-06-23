@@ -1,29 +1,84 @@
-const { app, BrowserWindow, ipcMain, Menu, screen } = require('electron');
+const { app, BrowserWindow, ipcMain, screen } = require('electron');
 const path = require('path');
-let operatorWin, outputWin;
 
-function createWindows() {
-  const displays = screen.getAllDisplays();
-  const outputDisplay = displays[1] || displays[0];
+let operatorWindow = null;
+let outputWindow = null;
 
-  operatorWin = new BrowserWindow({ width:1200, height:800, backgroundColor:'#0a0b0e',
-    webPreferences:{ nodeIntegration:false, contextIsolation:true, preload:path.join(__dirname,'preload.js') }
+function createOperatorWindow() {
+  operatorWindow = new BrowserWindow({
+    width: 1280,
+    height: 800,
+    minWidth: 1000,
+    minHeight: 600,
+    title: 'StageFlow — Operator',
+    backgroundColor: '#0f1117',
+    webPreferences: {
+      nodeIntegration: true,
+      contextIsolation: false,
+    },
   });
-  operatorWin.loadFile('operator.html');
-
-  outputWin = new BrowserWindow({
-    x: outputDisplay.bounds.x, y: outputDisplay.bounds.y,
-    width: outputDisplay.bounds.width, height: outputDisplay.bounds.height,
-    fullscreen: displays.length > 1, frame:false, backgroundColor:'#000',
-    webPreferences:{ nodeIntegration:false, contextIsolation:true, preload:path.join(__dirname,'preload.js') }
+  operatorWindow.loadFile(path.join(__dirname, 'src', 'operator.html'));
+  operatorWindow.on('closed', () => {
+    operatorWindow = null;
+    if (outputWindow) outputWindow.close();
   });
-  outputWin.loadFile('output.html');
-  Menu.setApplicationMenu(null);
 }
 
-app.whenReady().then(createWindows);
-app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(); });
+function createOutputWindow(displayId) {
+  const displays = screen.getAllDisplays();
+  let targetDisplay = displays.find(d => d.id === displayId) || displays[displays.length - 1];
 
-ipcMain.on('go-live', (_, slide) => { outputWin?.webContents.send('show-slide', slide); });
-ipcMain.on('blackout', () => { outputWin?.webContents.send('blackout'); });
-ipcMain.on('clear', () => { outputWin?.webContents.send('clear'); });
+  if (outputWindow) outputWindow.close();
+
+  outputWindow = new BrowserWindow({
+    x: targetDisplay.bounds.x,
+    y: targetDisplay.bounds.y,
+    width: targetDisplay.bounds.width,
+    height: targetDisplay.bounds.height,
+    frame: false,
+    fullscreen: true,
+    backgroundColor: '#000000',
+    webPreferences: {
+      nodeIntegration: true,
+      contextIsolation: false,
+    },
+  });
+  outputWindow.loadFile(path.join(__dirname, 'src', 'output.html'));
+  outputWindow.on('closed', () => { outputWindow = null; });
+}
+
+app.whenReady().then(() => {
+  createOperatorWindow();
+});
+
+app.on('window-all-closed', () => {
+  if (process.platform !== 'darwin') app.quit();
+});
+
+// IPC: send slide content to output window
+ipcMain.on('show-slide', (event, slideData) => {
+  if (outputWindow) {
+    outputWindow.webContents.send('render-slide', slideData);
+  }
+});
+
+ipcMain.on('clear-output', () => {
+  if (outputWindow) outputWindow.webContents.send('clear-screen');
+});
+
+ipcMain.on('open-output-window', (event, displayId) => {
+  createOutputWindow(displayId);
+});
+
+ipcMain.on('close-output-window', () => {
+  if (outputWindow) outputWindow.close();
+});
+
+ipcMain.handle('get-displays', () => {
+  return screen.getAllDisplays().map(d => ({
+    id: d.id,
+    label: `Display ${d.id} (${d.bounds.width}x${d.bounds.height})`,
+    bounds: d.bounds,
+    primary: d.id === screen.getPrimaryDisplay().id,
+  }));
+});
