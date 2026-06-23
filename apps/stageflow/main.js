@@ -1,6 +1,12 @@
 const { app, BrowserWindow, ipcMain, screen } = require('electron');
 const path = require('path');
 
+// ── StageOS Event Bus ────────────────────────────────────────
+// Lets StageFlow tell Booth, LightScript, and Timecode Pro when a
+// slide goes live or output clears, and react when THEY trigger a
+// show-wide blackout. Safe no-op if the output daemon isn't running.
+const stageBus = require('./stageos-eventbus')('stageflow');
+
 let operatorWindow = null;
 let outputWindow = null;
 
@@ -60,10 +66,12 @@ ipcMain.on('show-slide', (event, slideData) => {
   if (outputWindow) {
     outputWindow.webContents.send('render-slide', slideData);
   }
+  stageBus.emit('slide-changed', { slide: slideData });
 });
 
 ipcMain.on('clear-output', () => {
   if (outputWindow) outputWindow.webContents.send('clear-screen');
+  stageBus.emit('blackout', { on: true });
 });
 
 ipcMain.on('open-output-window', (event, displayId) => {
@@ -81,4 +89,23 @@ ipcMain.handle('get-displays', () => {
     bounds: d.bounds,
     primary: d.id === screen.getPrimaryDisplay().id,
   }));
+});
+
+// ── StageOS Event Bus: react to other apps ──────────────────
+// If Booth, LightScript, or Timecode Pro calls a show-wide blackout,
+// clear StageFlow's output screen too so every app stays in sync.
+stageBus.on('blackout', (data, source) => {
+  if (data && data.on && outputWindow) {
+    outputWindow.webContents.send('clear-screen');
+  }
+  if (operatorWindow && !operatorWindow.isDestroyed()) {
+    operatorWindow.webContents.send('stagebus-blackout', { source });
+  }
+});
+
+// Surface cue fires / transport events from other apps in the operator UI
+stageBus.onAny((event, data, source) => {
+  if (operatorWindow && !operatorWindow.isDestroyed()) {
+    operatorWindow.webContents.send('stagebus-event', { event, data, source });
+  }
 });
