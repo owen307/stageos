@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<title>Booth Copilot</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg0:#07080e;--bg1:#0d0f1a;--bg2:#111420;--bg3:#181c2a;--bg4:#1f2438;
+  --teal:#2E4F52;--teal2:#1E3A3E;--teal3:#3A5F63;--teal4:#4A7F83;--teal5:#5A9FA3;
+  --accent:#00e5ff;--accent2:#ff6b35;--green:#39ff80;--red:#ff3a5c;--yellow:#ffd166;--purple:#a78bfa;
+  --text:#e8e8f0;--text2:#9090b0;--text3:#44445a;
+  --border:rgba(255,255,255,0.07);--border-a:rgba(0,229,255,0.25);
+  --font-mono:'JetBrains Mono',monospace;--font-ui:'Syne',sans-serif;
+  --r:6px;--r-sm:3px;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;overflow:hidden;background:var(--bg0);color:var(--text);font-family:var(--font-ui);font-size:13px;-webkit-font-smoothing:antialiased;}
+::-webkit-scrollbar{width:5px;height:5px;}
+::-webkit-scrollbar-thumb{background:var(--bg4);border-radius:3px;}
+
+/* ── APP SHELL ── */
+#app{display:flex;flex-direction:column;height:100vh;}
+
+/* ── TITLE BAR ── */
+#titlebar{
+  height:44px;background:var(--bg0);border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;padding:0 16px;
+  -webkit-app-region:drag;flex-shrink:0;gap:12px;
+}
+.tb-left{display:flex;align-items:center;gap:10px;}
+.tb-logo{width:28px;height:28px;border-radius:var(--r-sm);border:1px solid var(--border-a);box-shadow:0 0 8px rgba(0,229,255,0.2);object-fit:cover;flex-shrink:0;}
+.tb-app{font-weight:800;font-size:14px;color:var(--accent);letter-spacing:0.04em;}
+.tb-show{font-family:var(--font-mono);font-size:11px;color:var(--text);padding:2px 8px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);}
+.tb-dirty{color:var(--yellow);font-size:14px;}
+.tb-right{display:flex;align-items:center;gap:10px;-webkit-app-region:no-drag;}
+.tc-clock{font-family:var(--font-mono);font-size:22px;font-weight:300;color:var(--accent);letter-spacing:0.05em;text-shadow:0 0 20px rgba(0,229,255,0.3);cursor:default;user-select:none;}
+.osc-pill,.midi-pill{font-family:var(--font-mono);font-size:9px;padding:2px 7px;border-radius:10px;letter-spacing:0.1em;border:1px solid;cursor:pointer;}
+.osc-pill{color:var(--text2);border-color:var(--border);}
+.osc-pill.on{color:var(--green);border-color:var(--green);background:rgba(57,255,128,0.08);}
+.midi-pill{color:var(--text2);border-color:var(--border);}
+.midi-pill.on{color:var(--purple);border-color:var(--purple);background:rgba(167,139,250,0.1);}
+.rec-pill{font-family:var(--font-mono);font-size:9px;padding:2px 8px;border-radius:10px;border:1px solid rgba(255,58,92,0.4);color:var(--text2);letter-spacing:0.1em;cursor:pointer;transition:all 0.2s;}
+.rec-pill.on{color:var(--red);border-color:var(--red);background:rgba(255,58,92,0.12);animation:rec-blink 1s ease-in-out infinite;}
+@keyframes rec-blink{0%,100%{opacity:1;}50%{opacity:0.5;}}
+
+/* ── MAIN NAV ── */
+#main-nav{
+  height:40px;background:var(--teal2);border-bottom:1px solid var(--border);
+  display:flex;align-items:center;padding:0 8px;gap:2px;flex-shrink:0;
+}
+.nav-btn{
+  padding:0 16px;height:30px;background:transparent;border:none;color:var(--text2);
+  font-family:var(--font-ui);font-size:12px;font-weight:600;border-radius:var(--r-sm);cursor:pointer;
+  letter-spacing:0.06em;transition:all 0.15s;text-transform:uppercase;
+}
+.nav-btn:hover{background:rgba(255,255,255,0.07);color:var(--text);}
+.nav-btn.active{background:var(--teal3);color:#fff;border-bottom:2px solid var(--accent);}
+
+/* ── CONTENT AREA ── */
+#content{flex:1;overflow:hidden;display:flex;flex-direction:column;}
+.tab-page{display:none;flex:1;overflow:hidden;}
+.tab-page.active{display:flex;flex-direction:column;}
+
+/* ── SUB NAV ── */
+.sub-nav{
+  height:36px;background:var(--bg2);border-bottom:1px solid var(--border);
+  display:flex;align-items:center;padding:0 12px;gap:4px;flex-shrink:0;
+}
+.sub-btn{
+  padding:0 12px;height:26px;background:transparent;border:none;color:var(--text2);
+  font-family:var(--font-mono);font-size:10px;border-radius:var(--r-sm);cursor:pointer;
+  letter-spacing:0.08em;transition:all 0.15s;text-transform:uppercase;
+}
+.sub-btn:hover{background:var(--bg3);}
+.sub-btn.active{background:var(--teal3);color:#fff;}
+.sub-page{display:none;flex:1;overflow-y:auto;padding:16px;}
+.sub-page.active{display:block;}
+
+/* ── SHARED COMPONENTS ── */
+.panel{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:14px;margin-bottom:12px;}
+.panel-title{font-family:var(--font-mono);font-size:9px;letter-spacing:0.15em;text-transform:uppercase;color:var(--text3);margin-bottom:10px;}
+.btn{padding:6px 14px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text);font-family:var(--font-mono);font-size:11px;cursor:pointer;transition:all 0.15s;}
+.btn:hover{background:var(--bg4);border-color:var(--border-a);}
+.btn.primary{background:var(--teal4);border-color:var(--teal5);color:#fff;}
+.btn.danger{background:rgba(255,58,92,0.15);border-color:rgba(255,58,92,0.4);color:var(--red);}
+.btn.green{background:rgba(57,255,128,0.15);border-color:var(--green);color:var(--green);}
+.btn.accent{background:rgba(0,229,255,0.15);border-color:var(--accent);color:var(--accent);}
+.field-row{display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap;}
+.field-lbl{font-family:var(--font-mono);font-size:10px;color:var(--text2);letter-spacing:0.08em;min-width:80px;}
+.inp{background:var(--bg0);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text);font-family:var(--font-mono);font-size:12px;padding:5px 8px;outline:none;transition:border 0.15s;}
+.inp:focus{border-color:var(--border-a);}
+.sel{background:var(--bg0);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text);font-family:var(--font-mono);font-size:12px;padding:5px 8px;outline:none;cursor:pointer;}
+
+/* ── BOOTH: FADERS ── */
+.fader-container{display:flex;flex-wrap:wrap;gap:10px;padding:10px 0;}
+.fader{display:flex;flex-direction:column;align-items:center;gap:4px;background:var(--bg3);padding:8px 6px;border-radius:var(--r);border:1px solid var(--border);width:64px;}
+.ch-name{background:transparent;border:none;color:var(--text);font-family:var(--font-mono);font-size:9px;text-align:center;width:56px;outline:none;}
+.volume-touch{height:140px;width:40px;background:var(--bg4);border-radius:6px;position:relative;touch-action:none;cursor:pointer;}
+.volume-bar{position:absolute;bottom:0;width:100%;background:var(--accent);border-radius:0 0 6px 6px;opacity:0.85;}
+.db-span{font-family:var(--font-mono);font-size:9px;color:var(--text2);}
+.fader .btn{padding:3px 6px;font-size:9px;width:100%;}
+.muted .volume-bar{background:var(--red);}
+.soloed .volume-bar{background:var(--yellow);}
+
+/* ── BOOTH: ATEM GRID ── */
+.atem-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:5px;}
+.atem-btn{padding:10px 5px;background:var(--teal3);border:none;border-radius:var(--r-sm);color:#fff;cursor:pointer;font-family:var(--font-mono);font-size:12px;transition:all 0.15s;}
+.atem-btn.prev{background:#1a5c1a;}
+.atem-btn.prog{background:#5c1a1a;}
+.atem-switch{background:var(--accent);color:#000;font-weight:700;font-size:13px;padding:10px 24px;border:none;border-radius:var(--r);cursor:pointer;margin-top:10px;}
+
+/* ── BOOTH: ETC ION ── */
+.ion-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;margin-top:8px;}
+.ion-btn{padding:8px 4px;background:var(--teal3);border:none;border-radius:var(--r-sm);color:#fff;cursor:pointer;font-family:var(--font-mono);font-size:10px;transition:background 0.15s;}
+.ion-btn:hover{background:var(--teal4);}
+#cmd-line{width:100%;font-size:13px;}
+
+/* ── AUTOMATION: TRANSPORT ── */
+#transport{
+  height:70px;background:var(--bg0);border-bottom:1px solid var(--border);
+  display:flex;align-items:center;padding:0 20px;gap:16px;flex-shrink:0;
+}
+.t-btn{width:36px;height:36px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);color:var(--text2);font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all 0.15s;}
+.t-btn:hover{background:var(--bg4);color:var(--text);}
+.t-btn.play-btn{width:46px;height:46px;background:rgba(0,229,255,0.15);border-color:var(--accent);color:var(--accent);font-size:20px;}
+.t-btn.go-btn{background:var(--green);color:#000;font-weight:700;width:56px;font-size:13px;letter-spacing:0.1em;border:none;}
+.t-btn.stop-btn{background:var(--red);color:#fff;border:none;}
+.t-btn.rec-btn{width:auto;padding:0 12px;font-family:var(--font-mono);font-size:10px;letter-spacing:0.1em;}
+.t-btn.rec-btn.on{background:rgba(255,58,92,0.2);border-color:var(--red);color:var(--red);}
+.fps-sel{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text2);font-family:var(--font-mono);font-size:11px;padding:4px 6px;outline:none;}
+
+/* ── AUTOMATION: MAIN LAYOUT ── */
+#auto-layout{flex:1;display:flex;overflow:hidden;}
+#cue-panel{width:520px;min-width:380px;background:var(--bg1);border-right:1px solid var(--border);display:flex;flex-direction:column;}
+#center-panel{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+#inspector-panel{width:270px;background:var(--bg1);border-left:1px solid var(--border);display:flex;flex-direction:column;}
+
+/* panel headers */
+.p-header{height:34px;display:flex;align-items:center;justify-content:space-between;padding:0 10px;border-bottom:1px solid var(--border);font-family:var(--font-mono);font-size:9px;letter-spacing:0.14em;color:var(--text3);text-transform:uppercase;flex-shrink:0;}
+.p-header-actions{display:flex;gap:4px;}
+.icon-btn{width:22px;height:22px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text2);cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;transition:all 0.15s;}
+.icon-btn:hover{background:var(--bg4);color:var(--text);border-color:var(--border-a);}
+
+/* cue type picker */
+.cue-type-picker{display:flex;flex-wrap:wrap;gap:4px;padding:7px 10px;border-bottom:1px solid var(--border);background:var(--bg3);}
+.ct-btn{padding:4px 9px;background:var(--bg4);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text);font-family:var(--font-mono);font-size:10px;cursor:pointer;transition:all 0.15s;}
+.ct-btn:hover{border-color:var(--border-a);color:var(--accent);}
+
+/* cue list */
+.cue-list-hdr{display:grid;grid-template-columns:34px 18px 1fr 105px 72px 64px;padding:0 8px;height:26px;align-items:center;gap:4px;font-family:var(--font-mono);font-size:9px;letter-spacing:0.1em;color:var(--text3);border-bottom:1px solid var(--border);text-transform:uppercase;flex-shrink:0;}
+#cue-list{flex:1;overflow-y:auto;}
+.cue-row{display:grid;grid-template-columns:34px 18px 1fr 105px 72px 64px;padding:0 8px;height:36px;align-items:center;gap:4px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,0.03);transition:background 0.1s;user-select:none;}
+.cue-row:hover{background:var(--bg3);}
+.cue-row.selected{background:rgba(0,229,255,0.08);border-left:2px solid var(--accent);}
+.cue-row.playing{background:rgba(57,255,128,0.07);border-left:2px solid var(--green);}
+.cue-row.fired{animation:flash 0.4s ease-out;}
+@keyframes flash{0%{background:rgba(0,229,255,0.25);}100%{background:transparent;}}
+.cue-num{font-family:var(--font-mono);font-size:10px;color:var(--text3);text-align:right;padding-right:4px;}
+.cue-icon{font-size:13px;}
+.cue-name-cell{display:flex;align-items:center;gap:5px;overflow:hidden;}
+.cue-name-txt{font-size:12px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.cue-tc{font-family:var(--font-mono);font-size:10px;color:var(--accent);letter-spacing:0.04em;}
+.cue-dur{font-family:var(--font-mono);font-size:10px;color:var(--text2);}
+.cue-badge{font-family:var(--font-mono);font-size:9px;letter-spacing:0.08em;padding:2px 4px;border-radius:var(--r-sm);}
+.s-ready{color:var(--text3);}
+.s-playing{color:var(--green);background:rgba(57,255,128,0.1);}
+.s-done{color:var(--text3);text-decoration:line-through;}
+.s-broken{color:var(--red);}
+
+/* cue panel footer */
+.cue-footer{display:flex;gap:7px;padding:8px 10px;border-top:1px solid var(--border);background:var(--bg0);flex-shrink:0;}
+.big-go{flex:1;height:42px;background:var(--green);color:#000;border:none;border-radius:var(--r);font-family:var(--font-mono);font-size:14px;font-weight:700;letter-spacing:0.15em;cursor:pointer;box-shadow:0 0 16px rgba(57,255,128,0.2);}
+.big-stop{width:70px;height:42px;background:var(--red);color:#fff;border:none;border-radius:var(--r);font-family:var(--font-mono);font-size:13px;font-weight:700;cursor:pointer;}
+
+/* timeline */
+#timeline-container{height:110px;background:var(--bg0);border-bottom:1px solid var(--border);position:relative;overflow:hidden;flex-shrink:0;}
+#timeline-canvas{width:100%;height:100%;display:block;}
+#playhead{position:absolute;top:0;bottom:0;width:2px;background:var(--accent);left:80px;pointer-events:none;box-shadow:0 0 8px var(--accent);}
+
+/* inspector */
+.insp-scroll{flex:1;overflow-y:auto;padding:10px;}
+.insp-section{border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-bottom:10px;}
+.insp-sec-title{background:var(--bg3);padding:5px 9px;font-family:var(--font-mono);font-size:9px;letter-spacing:0.12em;color:var(--text3);text-transform:uppercase;border-bottom:1px solid var(--border);}
+.insp-field{padding:7px 9px;border-bottom:1px solid rgba(255,255,255,0.04);}
+.insp-field:last-child{border-bottom:none;}
+.f-lbl{font-family:var(--font-mono);font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px;}
+.f-inp{background:var(--bg0);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text);font-family:var(--font-mono);font-size:11px;padding:4px 7px;width:100%;outline:none;}
+.f-inp:focus{border-color:var(--border-a);}
+.f-inp.tc{color:var(--accent);}
+.f-slider{-webkit-appearance:none;width:100%;height:3px;background:var(--bg4);border-radius:2px;outline:none;margin-top:4px;}
+.f-slider::-webkit-slider-thumb{-webkit-appearance:none;width:12px;height:12px;background:var(--accent);border-radius:50%;cursor:pointer;}
+.trigger-pills{display:flex;gap:4px;flex-wrap:wrap;}
+.t-pill{padding:3px 8px;border:1px solid var(--border);border-radius:10px;font-family:var(--font-mono);font-size:9px;color:var(--text2);cursor:pointer;transition:all 0.15s;}
+.t-pill.active{border-color:var(--accent);color:var(--accent);background:rgba(0,229,255,0.1);}
+.fire-btn{width:calc(100% - 20px);margin:8px 10px 0;height:34px;background:rgba(0,229,255,0.15);border:1px solid var(--accent);border-radius:var(--r);color:var(--accent);font-family:var(--font-mono);font-size:11px;font-weight:700;cursor:pointer;letter-spacing:0.1em;}
+.fire-btn:hover{background:var(--accent);color:#000;}
+.insp-empty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--text3);gap:8px;}
+
+/* ── OSC / MIDI MONITOR ── */
+.monitor-wrap{flex:1;overflow-y:auto;font-family:var(--font-mono);font-size:11px;background:var(--bg0);}
+.mon-row{display:flex;gap:8px;align-items:center;padding:3px 10px;border-bottom:1px solid rgba(255,255,255,0.03);}
+.mon-row:hover{background:var(--bg2);}
+.mon-ts{color:var(--text3);font-size:9px;min-width:50px;}
+.mon-type{font-size:9px;padding:1px 5px;border-radius:3px;min-width:36px;text-align:center;}
+.mon-osc{background:rgba(0,229,255,0.12);color:var(--accent);}
+.mon-midi{background:rgba(167,139,250,0.12);color:var(--purple);}
+.mon-addr{color:var(--text);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.mon-args{color:var(--text2);font-size:10px;}
+.mon-tc{color:var(--text3);font-size:9px;min-width:80px;text-align:right;}
+
+/* ── RECORD PANEL ── */
+.rec-list{flex:1;overflow-y:auto;}
+.rec-entry{display:grid;grid-template-columns:80px 36px 1fr 100px auto;gap:6px;align-items:center;padding:4px 8px;border-bottom:1px solid rgba(255,255,255,0.03);font-family:var(--font-mono);font-size:10px;}
+.rec-entry:hover{background:var(--bg3);}
+.re-tc{color:var(--accent);}
+.re-type{font-size:9px;padding:1px 4px;border-radius:3px;}
+.re-addr{color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.re-args{color:var(--text2);}
+
+/* ── STATUS BAR ── */
+#statusbar{height:24px;background:var(--bg0);border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 12px;font-family:var(--font-mono);font-size:10px;color:var(--text3);flex-shrink:0;}
+
+/* ── MODAL ── */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:1000;display:none;align-items:center;justify-content:center;}
+.modal-bg.open{display:flex;}
+.modal{background:var(--bg2);border:1px solid var(--border-a);border-radius:10px;padding:22px;min-width:320px;max-width:480px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,0.8),0 0 40px rgba(0,229,255,0.08);}
+.modal h3{font-size:14px;font-weight:700;margin-bottom:14px;}
+.modal-actions{display:flex;gap:8px;margin-top:16px;justify-content:flex-end;}
+
+/* ── PROGRAMMING (Booth shows/scenes/cues) ── */
+.prog-layout{display:flex;gap:12px;height:100%;overflow:hidden;}
+.prog-col{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+.prog-col-header{display:flex;align-items:center;justify-content:space-between;padding:8px 0;flex-shrink:0;}
+.prog-col-header h4{font-size:12px;font-weight:700;}
+.prog-table{flex:1;overflow-y:auto;border:1px solid var(--border);border-radius:var(--r);}
+.prog-table table{width:100%;border-collapse:collapse;font-size:11px;}
+.prog-table th{padding:6px 8px;background:var(--bg3);font-family:var(--font-mono);font-size:9px;text-transform:uppercase;letter-spacing:0.1em;color:var(--text3);border-bottom:1px solid var(--border);}
+.prog-table td{padding:6px 8px;border-bottom:1px solid rgba(255,255,255,0.04);}
+.prog-table tr:hover td{background:var(--bg3);}
+.prog-table tr.sel td{background:rgba(0,229,255,0.08);}
+
+/* ── SETTINGS ── */
+.settings-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+@media(max-width:900px){.settings-grid{grid-template-columns:1fr;}}
+
+/* misc */
+.row{display:flex;gap:8px;align-items:center;}
+.spacer{flex:1;}
+</style>
+</head>
+<body>
+<div id="app">
+
+<!-- TITLE BAR -->
+<div id="titlebar">
+  <div class="tb-left">
+    <img src="../assets/logo.png" class="tb-logo" alt=""/>
+    <span class="tb-app">Booth Copilot</span>
+    <span class="tb-show" id="showName">Untitled Show</span>
+    <span class="tb-dirty" id="showDirty"></span>
+  </div>
+  <div class="tb-right">
+    <span class="tc-clock" id="tcClock">00:00:00:00</span>
+    <span class="rec-pill" id="recPill" onclick="toggleRecord()">⏺ REC</span>
+    <span class="osc-pill" id="oscPill" onclick="toggleOsc()">OSC OFF</span>
+    <span class="midi-pill" id="midiPill" onclick="openMidiSettings()">MIDI OFF</span>
+  </div>
+</div>
+
+<!-- MAIN NAV -->
+<div id="main-nav">
+  <button class="nav-btn" onclick="showTab('booth')">Control</button>
+  <button class="nav-btn" onclick="showTab('automation')">Automation</button>
+  <button class="nav-btn" onclick="showTab('osc-midi')">OSC / MIDI</button>
+  <button class="nav-btn" onclick="showTab('settings')">Settings</button>
+</div>
+
+<!-- ════════════════════════════════════════
+     BOOTH / CONTROL TAB
+     ════════════════════════════════════════ -->
+<div id="booth" class="tab-page">
+  <div class="sub-nav">
+    <button class="sub-btn" onclick="showSubTab('booth','lighting')">Lighting</button>
+    <button class="sub-btn" onclick="showSubTab('booth','audio')">Audio</button>
+    <button class="sub-btn" onclick="showSubTab('booth','visual')">Visual</button>
+  </div>
+
+  <!-- LIGHTING -->
+  <div id="booth-lighting" class="sub-page">
+    <div class="panel"><div class="panel-title">ETC Ion XE — Command Line</div>
+      <div class="field-row"><input class="inp" id="cmd-line" style="flex:1" placeholder="Enter command…" onkeydown="if(event.key==='Enter')executeIonCmd()"/><button class="btn" onclick="executeIonCmd()">Enter</button><button class="btn" onclick="document.getElementById('cmd-line').value=''">Clear</button></div>
+      <div class="ion-grid">
+        <button class="ion-btn" onclick="ionAppend('7')">7</button><button class="ion-btn" onclick="ionAppend('8')">8</button><button class="ion-btn" onclick="ionAppend('9')">9</button><button class="ion-btn" onclick="ionAppend('Macro M')">Macro M</button><button class="ion-btn" onclick="ionAppend('Learn L')">Learn L</button>
+        <button class="ion-btn" onclick="ionAppend('Undo CX')">Undo CX</button><button class="ion-btn" onclick="ionAppend('4')">4</button><button class="ion-btn" onclick="ionAppend('5')">5</button><button class="ion-btn" onclick="ionAppend('6')">6</button><button class="ion-btn" onclick="ionAppend('Release caS')">Release</button>
+        <button class="ion-btn" onclick="ionAppend('Query cQ')">Query cQ</button><button class="ion-btn" onclick="ionAppend('Copy To C')">Copy To</button><button class="ion-btn" onclick="ionAppend('1')">1</button><button class="ion-btn" onclick="ionAppend('2')">2</button><button class="ion-btn" onclick="ionAppend('3')">3</button>
+        <button class="ion-btn" onclick="ionAppend('Assert caA')">Assert</button><button class="ion-btn" onclick="ionAppend('Delete Del')">Delete</button><button class="ion-btn" onclick="ionAppend('Path caW')">Path</button><button class="ion-btn" onclick="ionAppend('.')">.</button><button class="ion-btn" onclick="ionAppend('0')">0</button>
+        <button class="ion-btn" onclick="ionAppend('Off caO')">Off</button><button class="ion-btn" onclick="ionAppend('Part P')">Part P</button><button class="ion-btn" onclick="ionAppend('Cue Q')">Cue Q</button><button class="ion-btn" onclick="ionAppend('Record R')">Record R</button><button class="ion-btn" onclick="ionAppend('Back')">Back</button>
+        <button class="ion-btn" onclick="ionAppend('Freeze caF')">Freeze</button><button class="ion-btn" onclick="ionAppend('Timing Disable caT')">T.Disable</button><button class="ion-btn" onclick="ionAppend('Update ai')">Update</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- AUDIO -->
+  <div id="booth-audio" class="sub-page">
+    <div class="panel">
+      <div class="row" style="margin-bottom:10px">
+        <div class="panel-title" style="margin:0">Midas M32 / Behringer Wing</div>
+        <div class="spacer"></div>
+        <div id="layer-nav" style="display:flex;flex-wrap:wrap;gap:4px">
+          <button class="btn" onclick="openLayer('l-inputs1')">Ch 1–8</button>
+          <button class="btn" onclick="openLayer('l-inputs2')">Ch 9–16</button>
+          <button class="btn" onclick="openLayer('l-inputs3')">Ch 17–24</button>
+          <button class="btn" onclick="openLayer('l-inputs4')">Ch 25–32</button>
+          <button class="btn" onclick="openLayer('l-aux')">Aux</button>
+          <button class="btn" onclick="openLayer('l-main')">Main</button>
+        </div>
+      </div>
+      <div id="l-inputs1" class="layer-content active"></div>
+      <div id="l-inputs2" class="layer-content"></div>
+      <div id="l-inputs3" class="layer-content"></div>
+      <div id="l-inputs4" class="layer-content"></div>
+      <div id="l-aux" class="layer-content"></div>
+      <div id="l-main" class="layer-content"></div>
+    </div>
+  </div>
+
+  <!-- VISUAL -->
+  <div id="booth-visual" class="sub-page">
+    <div class="panel"><div class="panel-title">ATEM Switcher</div>
+      <div style="background:var(--green);color:#000;padding:4px 10px;border-radius:var(--r-sm);font-size:11px;margin-bottom:6px;font-family:var(--font-mono);">PREVIEW</div>
+      <div class="atem-grid" id="atem-preview"></div>
+      <div style="background:var(--red);color:#fff;padding:4px 10px;border-radius:var(--r-sm);font-size:11px;margin:8px 0 6px;font-family:var(--font-mono);">PROGRAM</div>
+      <div class="atem-grid" id="atem-program"></div>
+      <button class="atem-switch" onclick="atemSwitch()">CUT / SWITCH</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════
+     AUTOMATION TAB
+     ════════════════════════════════════════ -->
+<div id="automation" class="tab-page" style="flex-direction:column;">
+  <!-- Transport -->
+  <div id="transport">
+    <button class="t-btn" onclick="rewindToStart()" title="Rewind">⏮</button>
+    <button class="t-btn play-btn" id="btnPlay" onclick="togglePlay()" title="Play/Pause (Space)">▶</button>
+    <button class="t-btn go-btn" onclick="goNextCue()" title="GO (G)">GO</button>
+    <button class="t-btn stop-btn" onclick="fullStop()" title="Stop (Esc)">■</button>
+    <button class="t-btn rec-btn" id="recBtn" onclick="toggleRecord()" title="Record OSC/MIDI">⏺ REC</button>
+    <div style="flex:1"></div>
+    <select class="fps-sel" id="fpsSelect" onchange="onFpsChange()">
+      <option value="24">24 fps</option><option value="25">25 fps</option>
+      <option value="29.97">29.97 fps</option><option value="30" selected>30 fps</option>
+    </select>
+    <button class="t-btn" id="btnVideo" onclick="toggleVideoWindow()" style="width:auto;padding:0 12px;font-family:var(--font-mono);font-size:10px;letter-spacing:0.08em;">🎬 Video</button>
+  </div>
+
+  <!-- Cue list + timeline + inspector -->
+  <div id="auto-layout">
+    <!-- CUE PANEL -->
+    <div id="cue-panel">
+      <div class="p-header">Cue List
+        <div class="p-header-actions">
+          <div class="icon-btn" id="addCueBtn" onclick="toggleCuePicker(event)" title="Add Cue">+</div>
+          <div class="icon-btn" onclick="deleteSelectedCue()" title="Delete">✕</div>
+        </div>
+      </div>
+      <div class="cue-type-picker" id="cuePicker" style="display:none">
+        <button class="ct-btn" data-type="audio">🔊 Audio</button>
+        <button class="ct-btn" data-type="video">🎬 Video</button>
+        <button class="ct-btn" data-type="midi">🎹 MIDI</button>
+        <button class="ct-btn" data-type="osc">📡 OSC</button>
+        <button class="ct-btn" data-type="fade">📉 Fade</button>
+        <button class="ct-btn" data-type="wait">⏱ Wait</button>
+        <button class="ct-btn" data-type="group">📁 Group</button>
+      </div>
+      <div class="cue-list-hdr">
+        <span>#</span><span></span><span>NAME</span><span>TC IN</span><span>DUR</span><span>STATUS</span>
+      </div>
+      <div id="cue-list"></div>
+      <div class="cue-footer">
+        <button class="big-go" onclick="goNextCue()">GO</button>
+        <button class="big-stop" onclick="fullStop()">STOP</button>
+      </div>
+    </div>
+
+    <!-- CENTER -->
+    <div id="center-panel">
+      <div id="timeline-container">
+        <canvas id="timeline-canvas"></canvas>
+        <div id="playhead"></div>
+      </div>
+      <!-- Record monitor -->
+      <div style="flex:1;display:flex;flex-direction:column;overflow:hidden;">
+        <div class="p-header">Live Monitor — Incoming OSC &amp; MIDI
+          <div class="p-header-actions">
+            <button class="icon-btn" onclick="clearMonitor()" title="Clear">✕</button>
+          </div>
+        </div>
+        <div class="monitor-wrap" id="monitorList"></div>
+      </div>
+    </div>
+
+    <!-- INSPECTOR -->
+    <div id="inspector-panel">
+      <div class="p-header">Inspector</div>
+      <div id="inspectorContent" class="insp-empty">
+        <div style="font-size:28px;opacity:0.2">◈</div>
+        <span>No cue selected</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ════════════════════════════════════════
+     OSC / MIDI TAB
+     ════════════════════════════════════════ -->
+<div id="osc-midi" class="tab-page">
+  <div class="sub-nav">
+    <button class="sub-btn" onclick="showSubTab('osc-midi','osc-config-tab')">OSC Config</button>
+    <button class="sub-btn" onclick="showSubTab('osc-midi','midi-config-tab')">MIDI Config</button>
+    <button class="sub-btn" onclick="showSubTab('osc-midi','record-tab')">Recorded Cues</button>
+    <button class="sub-btn" onclick="showSubTab('osc-midi','osc-send-tab')">OSC Send</button>
+    <button class="sub-btn" onclick="showSubTab('osc-midi','midi-send-tab')">MIDI Send</button>
+  </div>
+
+  <!-- OSC CONFIG -->
+  <div id="osc-config-tab" class="sub-page">
+    <div class="panel"><div class="panel-title">OSC Server (Receive)</div>
+      <div class="field-row"><span class="field-lbl">Listen Port</span><input class="inp" id="oscLocalPort" value="9000" style="width:100px"/></div>
+    </div>
+    <div class="panel"><div class="panel-title">OSC Client (Send)</div>
+      <div class="field-row"><span class="field-lbl">Remote Host</span><input class="inp" id="oscRemoteHost" value="127.0.0.1" style="width:160px"/></div>
+      <div class="field-row"><span class="field-lbl">Remote Port</span><input class="inp" id="oscRemotePort" value="8000" style="width:100px"/></div>
+    </div>
+    <div class="row">
+      <button class="btn green" onclick="startOsc()">▶ Start OSC</button>
+      <button class="btn danger" onclick="stopOsc()">■ Stop OSC</button>
+      <span id="oscStatusMsg" style="font-family:var(--font-mono);font-size:11px;color:var(--text2);margin-left:8px"></span>
+    </div>
+  </div>
+
+  <!-- MIDI CONFIG -->
+  <div id="midi-config-tab" class="sub-page">
+    <div class="panel"><div class="panel-title">MIDI Ports</div>
+      <div class="field-row">
+        <button class="btn" onclick="refreshMidi()">↻ Refresh Ports</button>
+      </div>
+      <div class="field-row">
+        <span class="field-lbl">Input Port</span>
+        <select class="sel" id="midiInSel"><option>— none —</option></select>
+        <button class="btn green" onclick="openMidiIn()">Open</button>
+      </div>
+      <div class="field-row">
+        <span class="field-lbl">Output Port</span>
+        <select class="sel" id="midiOutSel"><option>— none —</option></select>
+        <button class="btn green" onclick="openMidiOut()">Open</button>
+      </div>
+      <div class="field-row"><button class="btn danger" onclick="closeMidi()">Close All</button>
+        <span id="midiStatusMsg" style="font-family:var(--font-mono);font-size:11px;color:var(--text2);margin-left:8px"></span>
+      </div>
+    </div>
+    <div class="panel"><div class="panel-title">ProPresenter MIDI Map (reference)</div>
+      <table style="font-family:var(--font-mono);font-size:10px;width:100%;border-collapse:collapse;">
+        <tr style="background:var(--bg3)"><th style="padding:4px 8px">Action</th><th>Note #</th><th>Note Name</th></tr>
+        <tr><td style="padding:4px 8px">Next Slide</td><td>12</td><td>C-1</td></tr>
+        <tr><td style="padding:4px 8px">Prev Slide</td><td>13</td><td>C#-1</td></tr>
+        <tr><td style="padding:4px 8px">Next Playlist Item</td><td>10</td><td>A#-2</td></tr>
+        <tr><td style="padding:4px 8px">Prev Playlist Item</td><td>11</td><td>B-2</td></tr>
+        <tr><td style="padding:4px 8px">Start Timeline</td><td>14</td><td>D-1</td></tr>
+        <tr><td style="padding:4px 8px">Stop Timeline</td><td>15</td><td>D#-1</td></tr>
+        <tr><td style="padding:4px 8px">Play/Pause Video</td><td>7</td><td>G-2</td></tr>
+        <tr><td style="padding:4px 8px">Clear All</td><td>0</td><td>C-2</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- RECORDED CUES -->
+  <div id="record-tab" class="sub-page" style="display:flex;flex-direction:column;height:100%;padding:0;">
+    <div class="p-header" style="padding:0 12px;">
+      Recorded Events
+      <div class="p-header-actions">
+        <button class="btn green" style="height:22px;padding:0 8px;font-size:10px;" onclick="bakeRecordedCues()">⤵ Bake to Cue List</button>
+        <button class="btn" style="height:22px;padding:0 8px;font-size:10px;" onclick="clearRecorded()">Clear</button>
+      </div>
+    </div>
+    <div style="padding:8px 12px;font-family:var(--font-mono);font-size:10px;color:var(--text2);border-bottom:1px solid var(--border);flex-shrink:0;">
+      Records all incoming OSC and MIDI with timecode stamps while REC is active. Click "Bake" to convert to automation cues.
+    </div>
+    <div style="display:grid;grid-template-columns:80px 40px 1fr 120px;gap:4px;padding:4px 10px;font-family:var(--font-mono);font-size:9px;color:var(--text3);letter-spacing:0.1em;border-bottom:1px solid var(--border);text-transform:uppercase;flex-shrink:0;">
+      <span>TC</span><span>TYPE</span><span>ADDRESS / MSG</span><span>ARGS / DATA</span>
+    </div>
+    <div id="recordedList" style="flex:1;overflow-y:auto;"></div>
+  </div>
+
+  <!-- OSC SEND -->
+  <div id="osc-send-tab" class="sub-page">
+    <div class="panel"><div class="panel-title">Send OSC Message</div>
+      <div class="field-row"><span class="field-lbl">Address</span><input class="inp" id="osc-send-addr" value="/cue/1/start" style="flex:1"/></div>
+      <div class="field-row"><span class="field-lbl">Args (JSON)</span><input class="inp" id="osc-send-args" value='[{"type":"i","value":1}]' style="flex:1" placeholder='[{"type":"i","value":1}]'/></div>
+      <div class="row"><button class="btn accent" onclick="sendOscNow()">Send ▶</button><span id="osc-send-status" style="font-family:var(--font-mono);font-size:11px;color:var(--text2);margin-left:8px"></span></div>
+    </div>
+    <div class="panel"><div class="panel-title">Quick Sends</div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;" id="oscQuickBtns"></div>
+    </div>
+  </div>
+
+  <!-- MIDI SEND -->
+  <div id="midi-send-tab" class="sub-page">
+    <div class="panel"><div class="panel-title">Send MIDI Message</div>
+      <div class="field-row"><span class="field-lbl">Status Byte</span><input class="inp" id="midi-status" value="144" style="width:80px" type="number"/><span style="font-family:var(--font-mono);font-size:10px;color:var(--text2)">(144=Note On ch1, 128=Note Off)</span></div>
+      <div class="field-row"><span class="field-lbl">Data 1 (Note)</span><input class="inp" id="midi-d1" value="60" style="width:80px" type="number"/></div>
+      <div class="field-row"><span class="field-lbl">Data 2 (Vel)</span><input class="inp" id="midi-d2" value="127" style="width:80px" type="number"/></div>
+      <div class="row"><button class="btn accent" onclick="sendMidiNow()">Send ▶</button><span id="midi-send-status" style="font-family:var(--font-mono);font-size:11px;color:var(--text2);margin-left:8px"></span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════
+     SETTINGS TAB
+     ════════════════════════════════════════ -->
+<div id="settings" class="tab-page">
+  <div class="sub-page active">
+    <div class="settings-grid">
+      <div class="panel"><div class="panel-title">Devices</div>
+        <div class="field-row"><span class="field-lbl">Mixer IP</span><input class="inp" id="mixerIp" value="192.168.0.100" style="flex:1"/></div>
+        <div class="field-row"><span class="field-lbl">Mixer Type</span>
+          <select class="sel" id="mixerType"><option>Midas M32</option><option>Behringer Wing</option><option>ETC EOS</option></select>
+        </div>
+        <div class="field-row"><span class="field-lbl">Mixer Port</span><input class="inp" id="mixerPort" value="10023" style="width:100px"/></div>
+        <button class="btn" onclick="saveDeviceSettings()">Save</button>
+      </div>
+      <div class="panel"><div class="panel-title">Account</div>
+        <div class="field-row"><span class="field-lbl">User</span><input class="inp" id="acctUser" placeholder="Username" style="flex:1"/></div>
+        <div class="field-row"><span class="field-lbl">Email</span><input class="inp" id="acctEmail" type="email" placeholder="email" style="flex:1"/></div>
+        <button class="btn">Save</button>
+      </div>
+      <div class="panel"><div class="panel-title">Video Output</div>
+        <div class="field-row"><span class="field-lbl">Display</span>
+          <select class="sel" id="videoDispSel"><option>Loading…</option></select>
+          <button class="btn" onclick="moveVideoToDisplay()">Move Window</button>
+        </div>
+        <button class="btn accent" onclick="toggleVideoWindow()">Toggle Video Window</button>
+      </div>
+      <div class="panel" style="border-color:rgba(57,255,128,0.2)">
+        <div class="panel-title" style="color:var(--green)">📱 Mobile / Remote Access</div>
+        <div class="field-row">
+          <span class="field-lbl">Port</span>
+          <input class="inp" id="httpPort" value="3141" style="width:90px" type="number"/>
+          <button class="btn green" onclick="startHttpSrv()">Start</button>
+          <button class="btn danger" onclick="stopHttpSrv()">Stop</button>
+        </div>
+        <div id="httpStatus" style="font-family:var(--font-mono);font-size:11px;color:var(--text2);margin:6px 0 8px;">Auto-started on port 3141</div>
+        <div id="httpQrWrap" style="display:none;text-align:center;margin-bottom:8px;">
+          <canvas id="httpQr" width="160" height="160"></canvas>
+        </div>
+        <div id="httpUrl" style="font-family:var(--font-mono);font-size:12px;color:var(--accent);word-break:break-all;padding:8px;background:var(--bg0);border-radius:4px;border:1px solid var(--border-a);cursor:pointer;user-select:all;" title="Tap to copy">
+          Waiting for server…
+        </div>
+        <div style="font-family:var(--font-mono);font-size:10px;color:var(--text3);margin-top:6px;">
+          Open this URL on any phone or tablet on the same WiFi network.
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- STATUS BAR -->
+<div id="statusbar">
+  <span id="statusMsg">Ready</span>
+  <div class="row"><span id="cueCountMsg">0 cues</span><span style="color:var(--border);margin:0 6px">|</span><span id="nextCueMsg">No next cue</span></div>
+</div>
+
+<!-- CUE ROW TEMPLATE -->
+<template id="tmpl-cue-row">
+  <div class="cue-row" draggable="true">
+    <span class="cue-num"></span>
+    <span class="cue-icon"></span>
+    <span class="cue-name-cell"><span class="cue-name-txt"></span></span>
+    <span class="cue-tc"></span>
+    <span class="cue-dur"></span>
+    <span class="cue-badge"></span>
+  </div>
+</template>
+
+<script src="app.js"></script>
+</div>
+</body>
+</html>
