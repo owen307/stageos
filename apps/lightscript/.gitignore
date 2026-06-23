@@ -1,0 +1,9 @@
+node_modules/
+dist/
+out/
+*.map
+
+# PRIVATE — never commit these
+license-gen.js
+license-*.txt
+ai_key.json
