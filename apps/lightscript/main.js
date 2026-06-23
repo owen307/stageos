@@ -8,6 +8,12 @@ const { loadGDTFFolder }   = require('./gdtf-importer');
 const { RemoteServer }     = require('./remote-server');
 const { validateKey, activateLicense, loadLicense, deactivateLicense } = require('./license-validator');
 
+// ── StageOS Event Bus ────────────────────────────────────────
+// Lets LightScript notify Booth, StageFlow, and Timecode Pro when
+// a blackout happens, and react when THEY trigger one. Safe no-op
+// if the output daemon isn't running (e.g. running standalone).
+const stageBus = require('./stageos-eventbus')('lightscript');
+
 let mainWindow;
 const sacn      = new SACNEngine();
 const usbDmx    = new USBDMXEngine();
@@ -191,7 +197,7 @@ ipcMain.handle('sacn-stop',          ()               => { sacn.stop(); return {
 ipcMain.handle('sacn-push-fixtures', (_,fixtures)     => { if(!sacn.running)return{ok:false}; fixtures.forEach(f=>sacn.applyFixture(f)); return{ok:true}; });
 ipcMain.handle('sacn-set-universe',  (_,univ,data)    => { if(!sacn.running)return{ok:false}; sacn.setUniverse(univ,Buffer.from(data)); return{ok:true}; });
 ipcMain.handle('sacn-set-channel',   (_,u,ch,val)     => { sacn.setChannel(u,ch,val); return{ok:true}; });
-ipcMain.handle('sacn-blackout',      ()               => { sacn.blackout(); return{ok:true}; });
+ipcMain.handle('sacn-blackout',      ()               => { sacn.blackout(); stageBus.emit('blackout', { on:true }); return{ok:true}; });
 ipcMain.handle('sacn-stats',         ()               => sacn.getStats());
 ipcMain.handle('sacn-interfaces',    ()               => SACNEngine.getNetworkInterfaces());
 ipcMain.handle('sacn-configure',     (_,opts)         => { if(opts.priority)sacn.priority=Math.max(1,Math.min(200,opts.priority)); if(opts.sourceName)sacn.sourceName=opts.sourceName; if(opts.fps)sacn.fps=Math.max(1,Math.min(44,opts.fps)); return{ok:true}; });
@@ -204,7 +210,7 @@ ipcMain.handle('usbdmx-disconnect',    ()                           => { usbDmx.
 ipcMain.handle('usbdmx-push-fixtures', (_,fixtures)                 => { usbDmx.applyFixtures(fixtures); return{ok:true}; });
 ipcMain.handle('usbdmx-set-buffer',    (_,data)                     => { usbDmx.setBuffer(data); return{ok:true}; });
 ipcMain.handle('usbdmx-set-channel',   (_,ch,val)                   => { usbDmx.setChannel(ch,val); return{ok:true}; });
-ipcMain.handle('usbdmx-blackout',      ()                           => { usbDmx.blackout(); return{ok:true}; });
+ipcMain.handle('usbdmx-blackout',      ()                           => { usbDmx.blackout(); stageBus.emit('blackout', { on:true }); return{ok:true}; });
 ipcMain.handle('usbdmx-status',        ()                           => usbDmx.getStatus());
 
 // ── Clipboard ─────────────────────────────────────────────────────────────────
@@ -365,6 +371,27 @@ ipcMain.handle('remote-stop',       ()                  => { remote.stop(); retu
 ipcMain.handle('remote-status',     ()                  => remote.getStatus());
 ipcMain.handle('remote-broadcast',  (_, state)          => { remote.broadcast(state); return { ok: true }; });
 ipcMain.handle('remote-passcode',   (_, p)              => { remote.setPasscode(p); return { ok: true }; });
+
+// ── StageOS Event Bus: react to other apps ──────────────────
+// If Booth, StageFlow, or Timecode Pro calls a show-wide blackout,
+// blackout LightScript's outputs too so every app stays in sync.
+stageBus.on('blackout', (data, source) => {
+  if (data && data.on) {
+    sacn.blackout();
+    usbDmx.blackout();
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('stagebus-blackout', { source });
+    }
+  }
+});
+
+// Surface cue fires from other apps in the LightScript UI (optional —
+// renderer can ignore this event if it doesn't have a handler for it yet)
+stageBus.onAny((event, data, source) => {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('stagebus-event', { event, data, source });
+  }
+});
 
 // Forward remote commands from web clients into the renderer
 remote.onCommand = (cmdStr) => {
