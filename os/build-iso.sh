@@ -18,6 +18,7 @@ mount -t sysfs sys  stageos-build/chroot/sys
 cp /etc/resolv.conf stageos-build/chroot/etc/resolv.conf
 
 chroot stageos-build/chroot /bin/bash -c "
+set -e
 export DEBIAN_FRONTEND=noninteractive
 cat > /etc/apt/sources.list << 'SOURCES'
 deb http://archive.ubuntu.com/ubuntu noble main restricted universe multiverse
@@ -32,7 +33,7 @@ apt-get install -y --no-install-recommends \
   jackd2 ola ffmpeg thunar \
   avahi-daemon usbutils curl wget \
   xterm feh unclutter \
-  libnss3 libatk1.0-0 libatk-bridge2.0-0 libgtk-3-0 libgbm1 libasound2
+  libnss3 libatk1.0-0 libatk-bridge2.0-0 libgtk-3-0 libgbm1 libasound2t64
 
 # Electron needs a few extra shared libs (above) to run headless-less
 # on a fresh Ubuntu minbase image — without these it fails silently.
