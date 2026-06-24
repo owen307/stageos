@@ -2,600 +2,454 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>StageOS Installer</title>
+<title>StageOS</title>
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+  :root {
+    --bg:        #0a0b0e;
+    --surface:   #111318;
+    --surface2:  #181b22;
+    --border:    #252830;
+    --accent:    #e8a020;
+    --accent2:   #3b82f6;
+    --green:     #22c55e;
+    --red:       #ef4444;
+    --amber:     #f59e0b;
+    --text:      #f0f2f7;
+    --muted:     #6b7280;
+    --font:      'Inter', system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 100%; height: 100%; background: var(--bg); color: var(--text); font-family: var(--font); overflow: hidden; }
 
-:root {
-  --bg:      #0a0b0e;
-  --surf:    #111318;
-  --surf2:   #181b22;
-  --border:  #1e2530;
-  --border2: #252e3a;
-  --amber:   #e8a020;
-  --green:   #22c55e;
-  --red:     #ef4444;
-  --text:    #f0f2f7;
-  --muted:   #6b7280;
-  --dim:     #4b5563;
-  --font:    'Inter', system-ui, sans-serif;
-}
+  /* ── Top Bar ── */
+  #topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 24px; height: 52px; background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+  }
+  .logo { display: flex; align-items: center; gap: 10px; }
+  .logo-mark {
+    width: 32px; height: 32px; background: var(--accent);
+    border-radius: 6px; display: flex; align-items: center; justify-content: center;
+    font-weight: 900; font-size: 16px; color: #000; letter-spacing: -1px;
+  }
+  .logo-text { font-size: 18px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; }
+  .logo-sub  { font-size: 10px; color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase; margin-top: 1px; }
 
-* { box-sizing: border-box; margin: 0; padding: 0; }
+  #devices { display: flex; gap: 8px; }
+  .dev-pill {
+    display: flex; align-items: center; gap: 5px;
+    padding: 4px 10px; border-radius: 20px;
+    border: 1px solid var(--border); background: var(--surface2);
+    font-size: 11px; font-weight: 500; cursor: pointer; transition: all .2s;
+  }
+  .dev-pill:hover { border-color: var(--accent); }
+  .dev-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); }
+  .dev-pill.connected .dev-dot { background: var(--green); box-shadow: 0 0 6px var(--green); }
+  .dev-pill.error .dev-dot { background: var(--red); }
 
-html { height: 100%; }
-body {
-  min-height: 100%; background: var(--bg); color: var(--text);
-  font-family: var(--font); font-size: 14px; line-height: 1.5;
-}
+  #clock { font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--muted); }
 
-/* ── Shell ── */
-.shell {
-  display: flex; min-height: 100vh;
-}
+  /* ── Output Monitor Bar ── */
+  #output-bar {
+    position: fixed; top: 52px; left: 0; right: 0;
+    background: var(--surface2); border-bottom: 1px solid var(--border);
+    padding: 8px 24px; display: flex; gap: 10px; align-items: center; z-index: 99;
+  }
+  .out-label { font-size: 10px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .1em; margin-right: 4px; }
+  .display-card {
+    display: flex; align-items: center; gap: 6px;
+    padding: 4px 12px; border-radius: 6px; border: 1px solid var(--border);
+    background: var(--surface); font-size: 11px; cursor: pointer; transition: all .2s;
+    min-width: 120px;
+  }
+  .display-card:hover { border-color: var(--accent2); }
+  .display-card.active { border-color: var(--green); }
+  .display-icon { font-size: 14px; }
+  .display-info { display: flex; flex-direction: column; }
+  .display-role { font-weight: 600; font-size: 11px; }
+  .display-res  { font-size: 9px; color: var(--muted); }
+  .display-card .status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); margin-left: auto; }
+  .display-card.active .status-dot { background: var(--green); }
 
-/* ── Sidebar ── */
-.sidebar {
-  width: 220px; flex-shrink: 0;
-  background: #0d0e12; border-right: 1px solid var(--border);
-  display: flex; flex-direction: column;
-  position: sticky; top: 0; height: 100vh;
-}
-.brand {
-  padding: 28px 22px 22px;
-  border-bottom: 1px solid var(--border);
-}
-.brand-mark {
-  width: 46px; height: 46px; background: var(--amber); border-radius: 10px;
-  display: flex; align-items: center; justify-content: center;
-  font-weight: 900; font-size: 22px; color: #000; margin-bottom: 12px;
-}
-.brand-name { font-size: 20px; font-weight: 800; }
-.brand-ver  { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  /* ── Main Content ── */
+  #main { position: absolute; top: 108px; left: 0; right: 0; bottom: 0; display: flex; }
 
-.steps { padding: 18px 0; flex: 1; }
-.step {
-  display: flex; align-items: center; gap: 10px;
-  padding: 9px 22px; cursor: default;
-}
-.step-num {
-  width: 24px; height: 24px; border-radius: 50%; flex-shrink: 0;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 11px; font-weight: 700;
-  background: var(--surf2); color: var(--muted);
-  border: 1px solid var(--border2); transition: all .25s;
-}
-.step-lbl { font-size: 13px; color: var(--muted); font-weight: 500; transition: color .25s; }
-.step.active .step-num  { background: var(--amber); color: #000; border-color: var(--amber); }
-.step.active .step-lbl  { color: var(--text); font-weight: 600; }
-.step.done  .step-num   { background: var(--green); color: #fff; border-color: var(--green); }
-.step.done  .step-lbl   { color: var(--muted); }
+  #app-grid {
+    flex: 1; padding: 24px; display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: repeat(2, 1fr);
+    gap: 16px; overflow: hidden;
+  }
 
-.sidebar-foot {
-  padding: 16px 22px; border-top: 1px solid var(--border);
-  font-size: 10px; color: var(--dim);
-}
+  .app-tile {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 24px;
+    display: flex; flex-direction: column; cursor: pointer;
+    transition: all .2s; position: relative; overflow: hidden;
+  }
+  .app-tile::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+    background: var(--tile-color, var(--accent));
+  }
+  .app-tile:hover { border-color: var(--tile-color, var(--accent)); transform: translateY(-2px); box-shadow: 0 8px 32px rgba(0,0,0,.4); }
+  .app-tile:active { transform: translateY(0); }
+  .app-tile.running { border-color: var(--tile-color, var(--accent)); }
+  .app-tile.running::after {
+    content: 'RUNNING'; position: absolute; top: 14px; right: 14px;
+    font-size: 9px; font-weight: 700; letter-spacing: .1em;
+    color: var(--tile-color, var(--accent)); background: rgba(0,0,0,.6);
+    padding: 2px 6px; border-radius: 4px; border: 1px solid var(--tile-color, var(--accent));
+  }
+  .app-icon { font-size: 36px; margin-bottom: 12px; }
+  .app-name { font-size: 16px; font-weight: 700; margin-bottom: 4px; }
+  .app-desc { font-size: 12px; color: var(--muted); line-height: 1.5; }
+  .app-tags { display: flex; gap: 4px; margin-top: auto; padding-top: 12px; flex-wrap: wrap; }
+  .tag {
+    font-size: 9px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase;
+    padding: 2px 6px; border-radius: 3px; background: rgba(255,255,255,.06); color: var(--muted);
+  }
 
-/* ── Main ── */
-.main { flex: 1; display: flex; flex-direction: column; min-height: 100vh; }
+  /* ── Right Panel ── */
+  #right-panel {
+    width: 280px; background: var(--surface); border-left: 1px solid var(--border);
+    display: flex; flex-direction: column; overflow-y: auto;
+  }
+  .panel-section { padding: 16px; border-bottom: 1px solid var(--border); }
+  .panel-title { font-size: 10px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .12em; margin-bottom: 12px; }
 
-/* ── Screens ── */
-.screen { display: none; flex: 1; flex-direction: column; }
-.screen.active { display: flex; }
+  .level-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .level-label { font-size: 11px; width: 70px; flex-shrink: 0; }
+  .level-bar { flex: 1; height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; }
+  .level-fill { height: 100%; border-radius: 3px; transition: width .05s; }
+  .level-val { font-size: 10px; color: var(--muted); width: 36px; text-align: right; font-variant-numeric: tabular-nums; }
 
-.screen-body {
-  flex: 1; padding: 36px 40px 28px;
-  overflow-y: auto;
-}
-.screen-foot {
-  padding: 18px 40px;
-  border-top: 1px solid var(--border);
-  background: var(--bg);
-  display: flex; align-items: center; justify-content: space-between;
-  flex-shrink: 0;
-  position: sticky; bottom: 0;
-}
+  .universe-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 6px 10px; border-radius: 6px; background: var(--surface2);
+    margin-bottom: 6px; font-size: 11px;
+  }
+  .universe-num { font-weight: 700; color: var(--accent); }
+  .universe-proto { color: var(--muted); font-size: 10px; }
+  .universe-activity { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+  .universe-activity.active { background: var(--accent); box-shadow: 0 0 6px var(--accent); }
 
-.s-title { font-size: 24px; font-weight: 800; margin-bottom: 6px; letter-spacing: -.01em; }
-.s-sub   { font-size: 13px; color: var(--muted); margin-bottom: 28px; line-height: 1.6; }
+  .stream-row {
+    display: flex; align-items: center; gap: 8px;
+    padding: 6px 10px; border-radius: 6px; background: var(--surface2); margin-bottom: 6px;
+  }
+  .stream-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); flex-shrink: 0; }
+  .stream-dot.live { background: var(--red); animation: pulse 1.5s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+  .stream-info { flex: 1; }
+  .stream-name { font-size: 11px; font-weight: 600; }
+  .stream-url  { font-size: 9px; color: var(--muted); }
 
-/* ── Buttons ── */
-.btn {
-  padding: 10px 26px; border-radius: 7px; border: none;
-  font-size: 13px; font-weight: 600; cursor: pointer;
-  transition: all .15s; display: inline-flex; align-items: center; gap: 6px;
-  font-family: var(--font);
-}
-.btn-primary { background: var(--amber); color: #000; }
-.btn-primary:hover { background: #f0b030; }
-.btn-ghost   { background: var(--surf2); color: var(--muted); border: 1px solid var(--border2); }
-.btn-ghost:hover { background: var(--border); color: var(--text); }
-.btn:disabled { opacity: .35; cursor: not-allowed; }
+  .quick-btn {
+    width: 100%; padding: 8px 12px; border-radius: 6px;
+    background: var(--surface2); border: 1px solid var(--border);
+    color: var(--text); font-size: 11px; font-weight: 600;
+    cursor: pointer; text-align: left; transition: all .15s;
+    display: flex; align-items: center; gap: 8px; margin-bottom: 6px;
+  }
+  .quick-btn:hover { background: var(--border); }
+  .quick-btn.danger:hover { background: rgba(239,68,68,.15); border-color: var(--red); color: var(--red); }
 
-/* ── Welcome ── */
-.hero {
-  display: flex; align-items: flex-start; gap: 20px;
-  padding: 22px 24px; background: var(--surf); border-radius: 12px;
-  border: 1px solid var(--border); margin-bottom: 24px;
-}
-.hero-icon { font-size: 44px; flex-shrink: 0; }
-.hero-h { font-size: 15px; font-weight: 700; margin-bottom: 5px; }
-.hero-p { font-size: 12px; color: var(--muted); line-height: 1.65; }
-
-.feat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.feat {
-  padding: 14px 16px; background: var(--surf);
-  border-radius: 8px; border: 1px solid var(--border);
-}
-.feat-i { font-size: 20px; margin-bottom: 7px; }
-.feat-t { font-size: 12px; font-weight: 600; margin-bottom: 3px; }
-.feat-d { font-size: 11px; color: var(--muted); line-height: 1.55; }
-
-/* ── Requirements ── */
-.req-list { display: flex; flex-direction: column; gap: 10px; }
-.req-row {
-  display: flex; align-items: center; gap: 14px;
-  padding: 13px 16px; background: var(--surf);
-  border-radius: 8px; border: 1px solid var(--border);
-  transition: border-color .3s;
-}
-.req-icon   { font-size: 20px; width: 28px; text-align: center; flex-shrink: 0; }
-.req-info   { flex: 1; }
-.req-lbl    { font-size: 12px; font-weight: 600; margin-bottom: 2px; }
-.req-detail { font-size: 11px; color: var(--muted); }
-.req-icon2  { font-size: 18px; flex-shrink: 0; }
-.req-row.pass { border-color: #14532d; }
-.req-row.fail { border-color: #7f1d1d; }
-.req-row.warn { border-color: #78350f; }
-
-/* ── Config ── */
-.cfg-section { margin-bottom: 28px; }
-.cfg-label {
-  font-size: 11px; font-weight: 700; color: var(--muted);
-  text-transform: uppercase; letter-spacing: .1em; margin-bottom: 12px;
-}
-.toggle-row {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 11px 16px; background: var(--surf);
-  border-radius: 8px; border: 1px solid var(--border); margin-bottom: 8px;
-}
-.toggle-left  { display: flex; align-items: center; gap: 10px; }
-.toggle-emoji { font-size: 16px; }
-.toggle-t     { font-size: 13px; font-weight: 600; }
-.toggle-d     { font-size: 11px; color: var(--muted); margin-top: 2px; }
-.toggle {
-  width: 40px; height: 22px; background: var(--surf2);
-  border-radius: 11px; cursor: pointer; flex-shrink: 0;
-  position: relative; transition: background .2s;
-  border: 1px solid var(--border2);
-}
-.toggle.on { background: var(--amber); border-color: var(--amber); }
-.toggle::after {
-  content: ''; position: absolute;
-  width: 16px; height: 16px; border-radius: 50%; background: #fff;
-  top: 2px; left: 2px; transition: transform .2s;
-  box-shadow: 0 1px 3px rgba(0,0,0,.4);
-}
-.toggle.on::after { transform: translateX(18px); }
-
-.ip-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.ip-field label { font-size: 11px; color: var(--muted); display: block; margin-bottom: 5px; }
-.ip-field input {
-  width: 100%; padding: 9px 12px;
-  background: var(--surf); border: 1px solid var(--border);
-  border-radius: 6px; color: var(--text);
-  font-size: 12px; font-family: 'SF Mono', 'Consolas', monospace;
-  outline: none; transition: border-color .15s;
-}
-.ip-field input:focus { border-color: var(--amber); }
-
-.section-note {
-  font-size: 11px; color: var(--muted);
-  padding: 10px 14px; background: var(--surf2); border-radius: 6px;
-  border-left: 3px solid var(--amber); margin-top: 8px; line-height: 1.6;
-}
-
-/* ── Install ── */
-.install-box {
-  padding: 22px 24px; background: var(--surf);
-  border-radius: 12px; border: 1px solid var(--border); margin-bottom: 20px;
-}
-.install-msg  { font-size: 14px; font-weight: 600; margin-bottom: 14px; min-height: 22px; }
-.prog-track   { height: 6px; background: var(--surf2); border-radius: 3px; overflow: hidden; margin-bottom: 8px; }
-.prog-fill    { height: 100%; background: linear-gradient(90deg, var(--amber), #f0b030); border-radius: 3px; width: 0%; transition: width .4s ease; }
-.prog-pct     { font-size: 11px; color: var(--muted); text-align: right; }
-
-.log-box {
-  background: #060709; border: 1px solid var(--border);
-  border-radius: 8px; padding: 14px; height: 200px; overflow-y: auto;
-  font-family: 'SF Mono', 'Consolas', monospace; font-size: 11px; line-height: 1.8;
-}
-.log-line       { color: var(--muted); }
-.log-line.ok    { color: var(--green); }
-.log-line.info  { color: #60a5fa; }
-.log-line.warn  { color: #fbbf24; }
-.log-line.err   { color: var(--red); }
-
-/* ── Done ── */
-.done-hero { text-align: center; padding: 16px 0 28px; }
-.done-big  { font-size: 62px; margin-bottom: 14px; }
-.done-h    { font-size: 26px; font-weight: 800; margin-bottom: 8px; }
-.done-p    { font-size: 13px; color: var(--muted); max-width: 380px; margin: 0 auto 28px; line-height: 1.65; }
-.next-steps { display: flex; flex-direction: column; gap: 8px; }
-.ns {
-  display: flex; align-items: flex-start; gap: 12px;
-  padding: 13px 16px; background: var(--surf);
-  border-radius: 8px; border: 1px solid var(--border);
-}
-.ns-num {
-  width: 22px; height: 22px; border-radius: 50%; background: var(--amber); color: #000;
-  font-size: 11px; font-weight: 800; display: flex; align-items: center; justify-content: center;
-  flex-shrink: 0; margin-top: 2px;
-}
-.ns-t { font-size: 12px; font-weight: 600; margin-bottom: 2px; }
-.ns-d { font-size: 11px; color: var(--muted); line-height: 1.5; }
-
-/* ── Scrollbar ── */
-::-webkit-scrollbar       { width: 5px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+  #toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+    background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+    padding: 10px 20px; font-size: 13px; font-weight: 500;
+    opacity: 0; transition: opacity .3s; pointer-events: none; z-index: 9999;
+    white-space: nowrap;
+  }
+  #toast.show { opacity: 1; }
 </style>
 </head>
 <body>
-<div class="shell">
 
-  <!-- Sidebar -->
-  <nav class="sidebar">
-    <div class="brand">
-      <div class="brand-mark">S</div>
-      <div class="brand-name">StageOS</div>
-      <div class="brand-ver">Installer v1.0</div>
+<div id="topbar">
+  <div class="logo">
+    <div class="logo-mark">S</div>
+    <div>
+      <div class="logo-text">StageOS</div>
+      <div class="logo-sub">Production Operating System</div>
     </div>
-    <div class="steps">
-      <div class="step active" id="step-0"><div class="step-num">1</div><span class="step-lbl">Welcome</span></div>
-      <div class="step"        id="step-1"><div class="step-num">2</div><span class="step-lbl">Requirements</span></div>
-      <div class="step"        id="step-2"><div class="step-num">3</div><span class="step-lbl">Applications</span></div>
-      <div class="step"        id="step-3"><div class="step-num">4</div><span class="step-lbl">Devices</span></div>
-      <div class="step"        id="step-4"><div class="step-num">5</div><span class="step-lbl">Install</span></div>
-      <div class="step"        id="step-5"><div class="step-num">6</div><span class="step-lbl">Done</span></div>
-    </div>
-    <div class="sidebar-foot" id="plat-label">Detecting platform…</div>
-  </nav>
+  </div>
+  <div id="devices">
+    <div class="dev-pill" id="pill-eos" title="ETC EOS"><span class="dev-dot"></span>EOS</div>
+    <div class="dev-pill" id="pill-m32" title="Behringer M32"><span class="dev-dot"></span>M32</div>
+    <div class="dev-pill" id="pill-atem" title="ATEM Switcher"><span class="dev-dot"></span>ATEM</div>
+    <div class="dev-pill" id="pill-pp" title="ProPresenter"><span class="dev-dot"></span>ProPres</div>
+    <div class="dev-pill" id="pill-ola" title="OLA DMX Daemon"><span class="dev-dot"></span>OLA</div>
+    <div class="dev-pill" id="pill-jack" title="JACK Audio"><span class="dev-dot"></span>JACK</div>
+  </div>
+  <div id="clock">--:--:--</div>
+</div>
 
-  <!-- Main -->
-  <div class="main">
+<div id="output-bar">
+  <span class="out-label">Outputs</span>
+  <div id="display-list"></div>
+</div>
 
-    <!-- ══ Screen 0: Welcome ══ -->
-    <div class="screen active" id="screen-0">
-      <div class="screen-body">
-        <div class="s-title">Welcome to StageOS</div>
-        <p class="s-sub">Your dedicated production operating system. Boots straight to your tools — no desktop, no distractions, no Windows updates mid-show.</p>
-        <div class="hero">
-          <div class="hero-icon">🎛️</div>
-          <div>
-            <div class="hero-h">Built for the booth.</div>
-            <div class="hero-p">StageOS installs alongside your existing OS. At startup you choose Windows, macOS, or StageOS. When you're in StageOS, 100% of your hardware goes to the show.</div>
-          </div>
-        </div>
-        <div class="feat-grid">
-          <div class="feat"><div class="feat-i">💡</div><div class="feat-t">DMX Output</div><div class="feat-d">Art-Net, sACN, and USB-DMX on every universe simultaneously</div></div>
-          <div class="feat"><div class="feat-i">🔊</div><div class="feat-t">Pro Audio</div><div class="feat-d">JACK multi-channel — FOH, IEM, record, and stream at once</div></div>
-          <div class="feat"><div class="feat-i">🖥️</div><div class="feat-t">Multi-Output Video</div><div class="feat-d">Every display gets its own role — Stage, Jumbotron, FOH, Stream</div></div>
-          <div class="feat"><div class="feat-i">🔍</div><div class="feat-t">Boot-Time Diagnostics</div><div class="feat-d">Tests all equipment before the show starts — lights, audio, displays, network</div></div>
-        </div>
-      </div>
-      <div class="screen-foot">
-        <span style="font-size:11px;color:var(--dim)">Requires ~20 GB free disk space</span>
-        <button class="btn btn-primary" onclick="goTo(1)">Get Started →</button>
+<div id="main">
+  <div id="app-grid"></div>
+  <div id="right-panel">
+    <div class="panel-section">
+      <div class="panel-title">DMX Universes</div>
+      <div id="dmx-universes">
+        <div class="universe-row"><span class="universe-num">U1</span><span>Art-Net / OLA</span><span class="universe-proto">sACN</span><span class="universe-activity" id="u1-dot"></span></div>
+        <div class="universe-row"><span class="universe-num">U2</span><span>USB-DMX</span><span class="universe-proto">Enttec</span><span class="universe-activity" id="u2-dot"></span></div>
       </div>
     </div>
 
-    <!-- ══ Screen 1: Requirements ══ -->
-    <div class="screen" id="screen-0-check">
+    <div class="panel-section">
+      <div class="panel-title">Audio Output</div>
+      <div class="level-row">
+        <span class="level-label">FOH L/R</span>
+        <div class="level-bar"><div class="level-fill" id="lv-foh" style="width:0%;background:#22c55e"></div></div>
+        <span class="level-val" id="lv-foh-val">-∞</span>
+      </div>
+      <div class="level-row">
+        <span class="level-label">IEM Mix</span>
+        <div class="level-bar"><div class="level-fill" id="lv-iem" style="width:0%;background:#3b82f6"></div></div>
+        <span class="level-val" id="lv-iem-val">-∞</span>
+      </div>
+      <div class="level-row">
+        <span class="level-label">Record</span>
+        <div class="level-bar"><div class="level-fill" id="lv-rec" style="width:0%;background:#e8a020"></div></div>
+        <span class="level-val" id="lv-rec-val">-∞</span>
+      </div>
+      <div class="level-row">
+        <span class="level-label">Stream</span>
+        <div class="level-bar"><div class="level-fill" id="lv-str" style="width:0%;background:#a855f7"></div></div>
+        <span class="level-val" id="lv-str-val">-∞</span>
+      </div>
     </div>
 
-    <div class="screen" id="screen-1">
-      <div class="screen-body">
-        <div class="s-title">System Check</div>
-        <p class="s-sub">Verifying your computer meets the requirements.</p>
-        <div id="plat-badge" style="margin-bottom:18px;font-size:12px;color:var(--muted);"></div>
-        <div class="req-list">
-          <div class="req-row" id="req-os">
-            <div class="req-icon">💻</div>
-            <div class="req-info"><div class="req-lbl">Operating System</div><div class="req-detail" id="req-os-d">Checking…</div></div>
-            <div class="req-icon2" id="req-os-i">⏳</div>
-          </div>
-          <div class="req-row" id="req-cpu">
-            <div class="req-icon">⚡</div>
-            <div class="req-info"><div class="req-lbl">Processor</div><div class="req-detail" id="req-cpu-d">Checking…</div></div>
-            <div class="req-icon2" id="req-cpu-i">⏳</div>
-          </div>
-          <div class="req-row" id="req-ram">
-            <div class="req-icon">🧠</div>
-            <div class="req-info"><div class="req-lbl">Memory</div><div class="req-detail" id="req-ram-d">Checking…</div></div>
-            <div class="req-icon2" id="req-ram-i">⏳</div>
-          </div>
-          <div class="req-row" id="req-disk">
-            <div class="req-icon">💾</div>
-            <div class="req-info"><div class="req-lbl">Free Disk Space</div><div class="req-detail" id="req-disk-d">Checking…</div></div>
-            <div class="req-icon2" id="req-disk-i">⏳</div>
+    <div class="panel-section">
+      <div class="panel-title">Streams</div>
+      <div id="stream-list">
+        <div class="stream-row">
+          <div class="stream-dot" id="stream1-dot"></div>
+          <div class="stream-info">
+            <div class="stream-name">YouTube Live</div>
+            <div class="stream-url">rtmp://a.rtmp.youtube.com/live2</div>
           </div>
         </div>
       </div>
-      <div class="screen-foot">
-        <button class="btn btn-ghost" onclick="goTo(0)">← Back</button>
-        <button class="btn btn-primary" id="btn-req-next" onclick="goTo(2)" disabled>Continue →</button>
-      </div>
     </div>
 
-    <!-- ══ Screen 2: Applications ══ -->
-    <div class="screen" id="screen-2">
-      <div class="screen-body">
-        <div class="s-title">Choose Applications</div>
-        <p class="s-sub">Select what to install. You can add or remove anything later.</p>
-
-        <div class="cfg-section">
-          <div class="cfg-label">Your Production Suite</div>
-          <div class="toggle-row"><div class="toggle-left"><div class="toggle-emoji">🎛️</div><div><div class="toggle-t">Booth</div><div class="toggle-d">Unified show control — EOS, M32, ATEM, ProPresenter, Lightkey</div></div></div><div class="toggle on" id="tog-booth" onclick="tog(this)"></div></div>
-          <div class="toggle-row"><div class="toggle-left"><div class="toggle-emoji">💡</div><div><div class="toggle-t">LightShow</div><div class="toggle-d">Full lighting control with timecode, 3D visualizer, and GDTF</div></div></div><div class="toggle on" id="tog-light" onclick="tog(this)"></div></div>
-          <div class="toggle-row"><div class="toggle-left"><div class="toggle-emoji">📽️</div><div><div class="toggle-t">StageFlow</div><div class="toggle-d">ProPresenter-style visual output for lyrics, slides, and video</div></div></div><div class="toggle on" id="tog-flow" onclick="tog(this)"></div></div>
-          <div class="toggle-row"><div class="toggle-left"><div class="toggle-emoji">⏱️</div><div><div class="toggle-t">Timecode Pro</div><div class="toggle-d">Show automation driven by LTC/MTC timecode</div></div></div><div class="toggle on" id="tog-tc" onclick="tog(this)"></div></div>
-          <div class="toggle-row"><div class="toggle-left"><div class="toggle-emoji">🏟️</div><div><div class="toggle-t">Booth Sports</div><div class="toggle-d">Sports broadcast control with Jumbotrons and live scoring</div></div></div><div class="toggle" id="tog-sports" onclick="tog(this)"></div></div>
-        </div>
-
-        <div class="cfg-section">
-          <div class="cfg-label">Third-Party Apps</div>
-          <div class="toggle-row"><div class="toggle-left"><div class="toggle-emoji">🎬</div><div><div class="toggle-t">ProPresenter 7</div><div class="toggle-d">Renewicked Labs presentation software — Linux version included</div></div></div><div class="toggle" id="tog-pp" onclick="tog(this)"></div></div>
-          <div class="toggle-row"><div class="toggle-left"><div class="toggle-emoji">🎵</div><div><div class="toggle-t">Spotify</div><div class="toggle-d">For background music, pre-show, and intermission playback</div></div></div><div class="toggle" id="tog-spotify" onclick="tog(this)"></div></div>
-          <div class="section-note">Third-party apps require separate licenses. Spotify requires a free or Premium account. ProPresenter requires a ProPresenter license.</div>
-        </div>
-
-        <div class="cfg-section">
-          <div class="cfg-label">Utilities</div>
-          <div class="toggle-row"><div class="toggle-left"><div class="toggle-emoji">📁</div><div><div class="toggle-t">Thunar File Explorer</div><div class="toggle-d">Lightweight file manager for show files, media, and exports</div></div></div><div class="toggle on" id="tog-files" onclick="tog(this)"></div></div>
-          <div class="toggle-row"><div class="toggle-left"><div class="toggle-emoji">🌐</div><div><div class="toggle-t">Chromium Browser</div><div class="toggle-d">For web-based consoles, OLA dashboard, and network tools</div></div></div><div class="toggle on" id="tog-chrome" onclick="tog(this)"></div></div>
-          <div class="toggle-row"><div class="toggle-left"><div class="toggle-emoji">🎙️</div><div><div class="toggle-t">QjackCtl</div><div class="toggle-d">Visual JACK audio patchbay for managing audio routing</div></div></div><div class="toggle on" id="tog-jack" onclick="tog(this)"></div></div>
-        </div>
-      </div>
-      <div class="screen-foot">
-        <button class="btn btn-ghost" onclick="goTo(1)">← Back</button>
-        <button class="btn btn-primary" onclick="goTo(3)">Continue →</button>
-      </div>
+    <div class="panel-section">
+      <div class="panel-title">Quick Actions</div>
+      <button class="quick-btn" onclick="daemonCmd({type:'display_extend'})">🖥️ Extend All Displays</button>
+      <button class="quick-btn" onclick="daemonCmd({type:'jack_list'})">🔊 Refresh JACK Ports</button>
+      <button class="quick-btn" onclick="checkDevices()">🔍 Ping All Devices</button>
+      <button class="quick-btn danger" onclick="confirmBlackout()">⚫ Blackout All DMX</button>
     </div>
+  </div>
+</div>
 
-    <!-- ══ Screen 3: Devices ══ -->
-    <div class="screen" id="screen-3">
-      <div class="screen-body">
-        <div class="s-title">Production Gear</div>
-        <p class="s-sub">Enter the IP addresses of your devices. You can skip this and set them up later in StageOS Settings.</p>
-
-        <div class="cfg-section">
-          <div class="cfg-label">Consoles & Mixers</div>
-          <div class="ip-grid">
-            <div class="ip-field"><label>ETC EOS / Ion / Element</label><input id="ip-eos"  placeholder="192.168.1.100" /></div>
-            <div class="ip-field"><label>Behringer M32 or WING</label><input id="ip-m32"  placeholder="192.168.1.101" /></div>
-            <div class="ip-field"><label>ATEM Video Switcher</label><input id="ip-atem" placeholder="192.168.1.103" /></div>
-            <div class="ip-field"><label>ProPresenter</label><input id="ip-pp"   placeholder="192.168.1.104" /></div>
-          </div>
-        </div>
-
-        <div class="cfg-section">
-          <div class="cfg-label">DMX Output</div>
-          <div class="ip-grid">
-            <div class="ip-field"><label>Art-Net Node IP (if static)</label><input id="ip-artnet" placeholder="2.0.0.1 or leave blank" /></div>
-            <div class="ip-field"><label>USB-DMX Interface</label><input id="ip-usb" placeholder="Auto-detect" readonly style="opacity:.5" /></div>
-          </div>
-        </div>
-
-        <div class="cfg-section">
-          <div class="cfg-label">Stream Output (optional)</div>
-          <div class="ip-grid">
-            <div class="ip-field"><label>RTMP Server URL</label><input id="ip-rtmp" placeholder="rtmp://a.rtmp.youtube.com/live2" /></div>
-            <div class="ip-field"><label>Stream Key</label><input id="ip-key" placeholder="xxxx-xxxx-xxxx-xxxx" type="password" /></div>
-          </div>
-        </div>
-
-        <div class="section-note">All IPs can be changed at any time from StageOS Settings → Devices. The OS will also auto-discover devices via mDNS/Avahi.</div>
-      </div>
-      <div class="screen-foot">
-        <button class="btn btn-ghost" onclick="goTo(2)">← Back</button>
-        <button class="btn btn-primary" onclick="beginInstall()">Install StageOS →</button>
-      </div>
-    </div>
-
-    <!-- ══ Screen 4: Installing ══ -->
-    <div class="screen" id="screen-4">
-      <div class="screen-body">
-        <div class="s-title">Installing StageOS</div>
-        <p class="s-sub">This takes 5–10 minutes. Keep your computer plugged in and don't close this window.</p>
-        <div class="install-box">
-          <div class="install-msg" id="inst-msg">Preparing…</div>
-          <div class="prog-track"><div class="prog-fill" id="prog-fill"></div></div>
-          <div class="prog-pct"  id="prog-pct">0%</div>
-        </div>
-        <div class="log-box" id="log-box">
-          <div class="log-line info">StageOS Installer v1.0.0 — starting</div>
-        </div>
-      </div>
-      <div class="screen-foot">
-        <span style="font-size:11px;color:var(--dim)">Do not turn off your computer</span>
-        <div></div>
-      </div>
-    </div>
-
-    <!-- ══ Screen 5: Done ══ -->
-    <div class="screen" id="screen-5">
-      <div class="screen-body">
-        <div class="done-hero">
-          <div class="done-big">🎉</div>
-          <div class="done-h">StageOS is Ready!</div>
-          <div class="done-p">Restart your computer and choose <strong>StageOS</strong> from the boot menu to enter your production environment.</div>
-        </div>
-        <div class="next-steps">
-          <div class="ns"><div class="ns-num">1</div><div><div class="ns-t">Restart your computer</div><div class="ns-d">A boot menu appears at startup — select StageOS to launch your production environment</div></div></div>
-          <div class="ns"><div class="ns-num">2</div><div><div class="ns-t">Run the equipment test</div><div class="ns-d">On first boot, StageOS will offer to test all your gear — lights, audio, displays, and network devices</div></div></div>
-          <div class="ns"><div class="ns-num">3</div><div><div class="ns-t">Connect your gear and go</div><div class="ns-d">All your apps are in the launcher. Tap any tile to open it. Settings → Devices to adjust IPs anytime.</div></div></div>
-        </div>
-      </div>
-      <div class="screen-foot">
-        <button class="btn btn-ghost">View Docs</button>
-        <button class="btn btn-primary" onclick="alert('Restarting…')">Restart Now →</button>
-      </div>
-    </div>
-
-  </div><!-- /main -->
-</div><!-- /shell -->
+<div id="toast"></div>
 
 <script>
-// ── Navigation ──────────────────────────────────────────────
-const TOTAL = 6;
-let cur = 0;
+const APPS = [
+  { id: 'booth', name: 'Booth', icon: '🎛️', color: '#e8a020',
+    desc: 'Unified show control — EOS, M32, ATEM, ProPresenter, Lightkey',
+    cmd:  'node /opt/stageos/apps/booth/main.js',
+    tags: ['OSC','MIDI','DMX','Audio','Video'] },
+  { id: 'lightscript', name: 'LightScript', icon: '💡', color: '#a855f7',
+    desc: 'Full lighting control with timecode, cue system, 3D visualizer, GDTF',
+    cmd:  'node /opt/stageos/apps/lightscript/main.js',
+    tags: ['DMX','Art-Net','sACN','MIDI','Timecode'] },
+  { id: 'stageflow', name: 'StageFlow', icon: '📽️', color: '#3b82f6',
+    desc: 'ProPresenter-style visual output — lyrics, slides, video, multi-screen',
+    cmd:  'node /opt/stageos/apps/stageflow/main.js',
+    tags: ['Video','NDI','Multi-Output','Lyrics'] },
+  { id: 'timecode-pro', name: 'Timecode Pro', icon: '⏱️', color: '#22c55e',
+    desc: 'QLab-alternative show automation, timecode-driven cues and playback',
+    cmd:  'node /opt/stageos/apps/timecode-pro/main.js',
+    tags: ['LTC','MTC','OSC','Video','Audio'] },
+  { id: 'booth-sports', name: 'Booth Sports', icon: '🏟️', color: '#ef4444',
+    desc: 'Sports broadcast control — Jumbotrons, scoring, ads, live stream',
+    cmd:  'node /opt/stageos/apps/booth-sports/main.js',
+    tags: ['Video','Scoring','Stream','Graphics'] },
+  { id: 'settings', name: 'Settings', icon: '⚙️', color: '#6b7280',
+    desc: 'Network config, device IPs, display assignment, JACK routing, OLA setup',
+    cmd:  'SETTINGS',
+    tags: ['Network','Displays','DMX','Audio'] }
+];
 
-function goTo(n) {
-  document.querySelectorAll('.screen').forEach((s, i) => {
-    s.classList.toggle('active', i === n);
-  });
-  document.querySelectorAll('.step').forEach((s, i) => {
-    s.classList.toggle('active', i === n);
-    s.classList.toggle('done',   i < n);
-  });
-  cur = n;
-  window.scrollTo(0, 0);
-  if (n === 1) runSysCheck();
+const running = new Set();
+
+function renderApps() {
+  const grid = document.getElementById('app-grid');
+  grid.innerHTML = APPS.map(app => `
+    <div class="app-tile ${running.has(app.id) ? 'running' : ''}"
+         style="--tile-color:${app.color}"
+         onclick="launchApp('${app.id}')">
+      <div class="app-icon">${app.icon}</div>
+      <div class="app-name">${app.name}</div>
+      <div class="app-desc">${app.desc}</div>
+      <div class="app-tags">${app.tags.map(t => `<span class="tag">${t}</span>`).join('')}</div>
+    </div>
+  `).join('');
 }
 
-// ── Toggle ──────────────────────────────────────────────────
-function tog(el) { el.classList.toggle('on'); }
-
-// ── System check ────────────────────────────────────────────
-async function runSysCheck() {
-  const platform = navigator.platform || '';
-  const isWin  = platform.includes('Win')  || navigator.userAgent.includes('Windows');
-  const isMac  = platform.includes('Mac')  || navigator.userAgent.includes('Mac');
-  const isLinux= platform.includes('Linux')|| navigator.userAgent.includes('Linux');
-  const isArm  = navigator.userAgent.includes('ARM') || navigator.userAgent.includes('arm');
-
-  const labels = { win: '🪟 Windows', mac: '🍎 macOS', linux: '🐧 Linux' };
-  const plat   = isWin ? 'win' : isMac ? 'mac' : 'linux';
-  document.getElementById('plat-label').textContent = labels[plat] || 'Unknown OS';
-  document.getElementById('plat-badge').textContent = '⬡ ' + (labels[plat] || platform);
-
-  await delay(300);
-
-  // OS
-  setReq('os', 'pass', labels[plat] || platform, '✅');
-
-  await delay(400);
-
-  // CPU
-  if (isArm && isMac) {
-    setReq('cpu', 'warn', 'Apple Silicon — some hardware may need setup', '⚠️');
+function launchApp(id) {
+  const app = APPS.find(a => a.id === id);
+  if (!app) return;
+  if (app.cmd === 'SETTINGS') { showToast('Settings panel — coming soon'); return; }
+  if (window.electronAPI) {
+    window.electronAPI.launchApp(id, app.cmd);
   } else {
-    const cores = navigator.hardwareConcurrency || '?';
-    setReq('cpu', 'pass', `${cores}-core processor detected`, '✅');
+    fetch(`http://localhost:9002/launch?id=${id}&cmd=${encodeURIComponent(app.cmd)}`).catch(()=>{});
   }
-
-  await delay(400);
-
-  // RAM — estimate from navigator (limited, so we approximate)
-  const ram = navigator.deviceMemory || null;
-  if (ram && ram < 4) {
-    setReq('ram', 'warn', `~${ram} GB — 4 GB minimum recommended`, '⚠️');
-  } else {
-    setReq('ram', 'pass', ram ? `~${ram} GB available` : 'Sufficient memory detected', '✅');
-  }
-
-  await delay(400);
-
-  // Disk — can't check from browser, show advisory
-  setReq('disk', 'pass', '20 GB required — verify before continuing', '✅');
-
-  await delay(200);
-  document.getElementById('btn-req-next').disabled = false;
+  running.add(id);
+  renderApps();
+  showToast(`Launching ${app.name}…`);
 }
 
-function setReq(id, status, detail, icon) {
-  const row = document.getElementById('req-' + id);
-  row.className = 'req-row ' + status;
-  document.getElementById('req-' + id + '-d').textContent = detail;
-  document.getElementById('req-' + id + '-i').textContent = icon;
-}
-
-function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
-
-// ── Install simulation ───────────────────────────────────────
-async function beginInstall() {
-  goTo(4);
-
-  const apps = {
-    booth:   document.getElementById('tog-booth').classList.contains('on'),
-    light:   document.getElementById('tog-light').classList.contains('on'),
-    flow:    document.getElementById('tog-flow').classList.contains('on'),
-    tc:      document.getElementById('tog-tc').classList.contains('on'),
-    sports:  document.getElementById('tog-sports').classList.contains('on'),
-    pp:      document.getElementById('tog-pp').classList.contains('on'),
-    spotify: document.getElementById('tog-spotify').classList.contains('on'),
-    files:   document.getElementById('tog-files').classList.contains('on'),
-    chrome:  document.getElementById('tog-chrome').classList.contains('on'),
-    jack:    document.getElementById('tog-jack').classList.contains('on'),
+let ws;
+function connectDaemon() {
+  ws = new WebSocket('ws://localhost:9001');
+  ws.onopen  = () => { updatePill('ola', true); };
+  ws.onclose = () => { updatePill('ola', false); setTimeout(connectDaemon, 3000); };
+  ws.onmessage = e => {
+    try { handleDaemonMsg(JSON.parse(e.data)); } catch(err) {}
   };
+}
 
-  const steps = [
-    [2,  'Preparing installation environment…'],
-    [6,  'Bootstrapping Ubuntu base system…'],
-    [12, 'Installing Linux kernel…'],
-    [17, 'Configuring display server (X.org)…'],
-    [22, 'Installing JACK audio server…'],
-    [27, 'Installing OLA DMX daemon…'],
-    [32, 'Configuring Art-Net and sACN output…'],
-    [36, 'Writing USB device rules…'],
-    [40, 'Installing Node.js runtime…'],
-    [44, 'Installing StageOS output daemon…'],
-    [48, 'Installing StageOS launcher…'],
-    ...(apps.booth   ? [[51, 'Installing Booth…']]                            : []),
-    ...(apps.light   ? [[54, 'Installing LightShow…']]                        : []),
-    ...(apps.flow    ? [[57, 'Installing StageFlow…']]                        : []),
-    ...(apps.tc      ? [[60, 'Installing Timecode Pro…']]                     : []),
-    ...(apps.sports  ? [[63, 'Installing Booth Sports…']]                     : []),
-    ...(apps.pp      ? [[66, 'Installing ProPresenter 7 (Linux)…']]           : []),
-    ...(apps.spotify ? [[69, 'Installing Spotify (snap)…']]                   : []),
-    ...(apps.files   ? [[72, 'Installing Thunar file manager…']]              : []),
-    ...(apps.chrome  ? [[75, 'Installing Chromium browser…']]                 : []),
-    ...(apps.jack    ? [[78, 'Installing QjackCtl audio patchbay…']]          : []),
-    [82, 'Writing device configuration…'],
-    [86, 'Configuring auto-login…'],
-    [89, 'Setting up boot-time equipment test…'],
-    [92, 'Installing boot entry (GRUB)…'],
-    [95, 'Setting JACK real-time audio priority…'],
-    [98, 'Finalizing installation…'],
-    [100,'Installation complete!'],
-  ];
+function daemonCmd(obj) {
+  if (ws?.readyState === WebSocket.OPEN) ws.send(JSON.stringify(obj));
+}
 
-  for (const [pct, msg] of steps) {
-    setProgress(pct, msg);
-    addLog(pct === 100 ? 'ok' : 'info', msg);
-    await delay(420 + Math.random() * 280);
+function handleDaemonMsg(msg) {
+  if (msg.type === 'displays') renderDisplays(msg.displays);
+  if (msg.type === 'dmx_updated') flashUniverse(msg.universe);
+}
+
+const DISPLAY_ICONS = { Operator:'🖥️', Stage:'📺', FOH:'📺', 'Jumbotron 1':'🏟️', 'Jumbotron 2':'🏟️', 'LED Wall':'💡', Confidence:'👁️', Stream:'📡', Recording:'⏺️' };
+function renderDisplays(displays) {
+  const list = document.getElementById('display-list');
+  if (!displays?.length) { list.innerHTML = '<span style="font-size:11px;color:var(--muted)">No displays detected</span>'; return; }
+  list.innerHTML = displays.map(d => `
+    <div class="display-card ${d.active ? 'active' : ''}" onclick="cycleRole(${d.index})">
+      <span class="display-icon">${DISPLAY_ICONS[d.role] || '🖥️'}</span>
+      <div class="display-info">
+        <span class="display-role">${d.role}</span>
+        <span class="display-res">${d.name} · ${d.resolution}</span>
+      </div>
+      <span class="status-dot"></span>
+    </div>
+  `).join('');
+}
+
+const ROLES = ['Operator','Stage','FOH','Jumbotron 1','Jumbotron 2','LED Wall','Confidence','Stream','Recording'];
+function cycleRole(index) {
+  const card = document.querySelectorAll('.display-card')[index];
+  if (!card) return;
+  const cur  = card.querySelector('.display-role').textContent;
+  const next = ROLES[(ROLES.indexOf(cur) + 1) % ROLES.length];
+  daemonCmd({ type: 'display_assign', index, role: next });
+}
+
+const DEVICES = {
+  eos:  { ip: '192.168.1.100', port: 3032,  proto: 'tcp' },
+  m32:  { ip: '192.168.1.101', port: 10023, proto: 'udp' },
+  atem: { ip: '192.168.1.102', port: 9910,  proto: 'tcp' },
+  pp:   { ip: '192.168.1.103', port: 50001, proto: 'http' },
+  ola:  { ip: '127.0.0.1',     port: 9090,  proto: 'http' },
+  jack: { ip: '127.0.0.1',     port: 0,     proto: 'local' }
+};
+
+async function checkDevices() {
+  for (const [id, cfg] of Object.entries(DEVICES)) {
+    if (cfg.proto === 'http') {
+      try {
+        const r = await fetch(`http://${cfg.ip}:${cfg.port}/`, { signal: AbortSignal.timeout(1000) });
+        updatePill(id, r.ok);
+      } catch { updatePill(id, false); }
+    } else {
+      updatePill(id, false);
+    }
   }
-
-  await delay(800);
-  goTo(5);
 }
 
-function setProgress(pct, msg) {
-  document.getElementById('prog-fill').style.width = pct + '%';
-  document.getElementById('prog-pct').textContent  = pct + '%';
-  document.getElementById('inst-msg').textContent  = msg;
+function updatePill(id, online) {
+  const pill = document.getElementById(`pill-${id}`);
+  if (!pill) return;
+  pill.classList.toggle('connected', online);
+  pill.classList.toggle('error', !online);
 }
 
-function addLog(type, msg) {
-  const box  = document.getElementById('log-box');
-  const line = document.createElement('div');
-  const ts   = new Date().toLocaleTimeString('en-US', { hour12: false });
-  line.className   = 'log-line ' + type;
-  line.textContent = `[${ts}]  ${msg}`;
-  box.appendChild(line);
-  box.scrollTop = box.scrollHeight;
+function flashUniverse(universe) {
+  const dot = document.getElementById(`u${universe}-dot`);
+  if (!dot) return;
+  dot.classList.add('active');
+  setTimeout(() => dot.classList.remove('active'), 100);
 }
+
+function updateLevels() {
+  const ids = ['foh','iem','rec','str'];
+  ids.forEach(id => {
+    const fill = document.getElementById(`lv-${id}`);
+    const val  = document.getElementById(`lv-${id}-val`);
+    if (!fill) return;
+    const w = parseFloat(fill.style.width) || 0;
+    const newW = Math.max(0, w * 0.92 + (Math.random() > 0.9 ? Math.random() * 30 : 0));
+    fill.style.width = newW + '%';
+    const db = newW > 0.5 ? (20 * Math.log10(newW / 100)).toFixed(1) : '-∞';
+    val.textContent = db + (newW > 0.5 ? ' dB' : '');
+    fill.style.background = newW > 85 ? '#ef4444' : newW > 70 ? '#f59e0b' : fill.style.background;
+  });
+}
+
+function confirmBlackout() {
+  if (confirm('Send DMX blackout to all universes?')) {
+    for (let u = 1; u <= 4; u++) {
+      daemonCmd({ type: 'dmx', universe: u, data: new Array(512).fill(0) });
+    }
+    showToast('⚫ DMX Blackout sent to all universes');
+  }
+}
+
+function updateClock() {
+  const now = new Date();
+  const h = String(now.getHours()).padStart(2,'0');
+  const m = String(now.getMinutes()).padStart(2,'0');
+  const s = String(now.getSeconds()).padStart(2,'0');
+  document.getElementById('clock').textContent = `${h}:${m}:${s}`;
+}
+
+let toastTimer;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+renderApps();
+connectDaemon();
+checkDevices();
+
+setInterval(updateClock, 1000);
+setInterval(updateLevels, 50);
+setInterval(checkDevices, 30000);
+
+updateClock();
+renderDisplays([
+  { name: 'HDMI-1', resolution: '1920x1080', role: 'Operator', active: true, index: 0 },
+  { name: 'HDMI-2', resolution: '1920x1080', role: 'Stage',    active: true, index: 1 },
+]);
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'F11') { showToast('Full screen toggle'); }
+  if (e.key === 'Escape' && e.shiftKey) { confirmBlackout(); }
+  if (e.key >= '1' && e.key <= '6' && e.ctrlKey) { launchApp(APPS[parseInt(e.key)-1]?.id); }
+});
 </script>
 </body>
 </html>
