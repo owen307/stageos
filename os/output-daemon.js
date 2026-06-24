@@ -1,9 +1,9 @@
 #!/usr/bin/env node
-// StageOS Output Daemon v1.0
+// StageOS Output Daemon v1.1
 const dgram = require('dgram');
 const http  = require('http');
-const { execSync } = require('child_process');
-const ws    = require('/opt/stageos/apps/booth/node_modules/ws');
+const { execSync, spawn } = require('child_process');
+const { WebSocketServer } = require('ws'); // own dependency now — no longer borrowed from Booth
 
 const state = { displays:[], dmx:{}, streams:[], clients:new Set() };
 
@@ -31,7 +31,7 @@ oscSocket.on('message', (msg, rinfo) => {
 oscSocket.bind(9000, () => console.log('OSC: udp:9000'));
 
 // WebSocket API
-const wss = new ws.WebSocketServer({ port: 9001 });
+const wss = new WebSocketServer({ port: 9001 });
 wss.on('connection', c => {
   state.clients.add(c);
   c.send(JSON.stringify({ type:'hello', displays:state.displays }));
@@ -48,9 +48,7 @@ wss.on('connection', c => {
       // ── Event Bus: relay show events between apps ──────────
       // Booth, LightScript, StageFlow, Timecode Pro all connect here.
       // Any app can emit { type:'show-event', event:'cue-fired', data:{...}, source:'booth' }
-      // and every OTHER connected app receives it. This lets apps react
-      // to each other's actions (cue fires, blackout, slide changes,
-      // transport state) without knowing about each other directly.
+      // and every OTHER connected app receives it.
       if (cmd.type==='show-event') {
         const out = JSON.stringify({
           type:   'show-event',
@@ -82,12 +80,57 @@ function discoverDisplays() {
 setInterval(discoverDisplays, 10000);
 discoverDisplays();
 
-// Status HTTP
+// ── App launching ────────────────────────────────────────────
+// The launcher UI hits this so clicking a tile actually starts the
+// app. Apps live at /opt/stageos/apps/<id> and are real Electron
+// apps, so we spawn `electron <dir>` rather than plain `node`.
+const runningApps = new Map(); // id -> child process
+
+function launchApp(id) {
+  if (runningApps.has(id)) {
+    const proc = runningApps.get(id);
+    if (!proc.killed) return { ok: true, alreadyRunning: true };
+    runningApps.delete(id);
+  }
+  const appDir = `/opt/stageos/apps/${id}`;
+  try {
+    const proc = spawn('electron', [appDir], {
+      detached: true,
+      stdio: 'ignore',
+      env: { ...process.env, DISPLAY: ':0' }
+    });
+    proc.unref();
+    runningApps.set(id, proc);
+    proc.on('exit', () => runningApps.delete(id));
+    return { ok: true };
+  } catch(e) {
+    return { ok: false, error: e.message };
+  }
+}
+
+// Status + launch HTTP
 const statusServer = http.createServer((req,res) => {
-  res.setHeader('Content-Type','application/json');
   res.setHeader('Access-Control-Allow-Origin','*');
-  res.end(JSON.stringify({ displays:state.displays, dmxUniverses:Object.keys(state.dmx), uptime:process.uptime() }));
+
+  if (req.url.startsWith('/launch')) {
+    const params = new URLSearchParams(req.url.split('?')[1] || '');
+    const id = params.get('id');
+    res.setHeader('Content-Type','application/json');
+    if (!id) { res.writeHead(400); res.end(JSON.stringify({ok:false,error:'missing id'})); return; }
+    const result = launchApp(id);
+    res.writeHead(result.ok ? 200 : 500);
+    res.end(JSON.stringify(result));
+    return;
+  }
+
+  res.setHeader('Content-Type','application/json');
+  res.end(JSON.stringify({
+    displays: state.displays,
+    dmxUniverses: Object.keys(state.dmx),
+    runningApps: Array.from(runningApps.keys()),
+    uptime: process.uptime()
+  }));
 });
-statusServer.listen(9002, () => console.log('Status: http:9002'));
+statusServer.listen(9002, () => console.log('Status+Launch: http:9002'));
 
 console.log('StageOS Output Daemon ready\n  OSC:    udp:9000\n  WS:     ws:9001\n  Status: http:9002');
