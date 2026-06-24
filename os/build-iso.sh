@@ -1,8 +1,8 @@
 #!/bin/bash
-# StageOS ISO Builder v1.1 - Fixed for ThinkCentre M73 and similar hardware
+# StageOS ISO Builder v1.2 - real apps, Electron runtime, working launcher
 set -e
 
-echo "=== StageOS ISO Builder v1.1 ==="
+echo "=== StageOS ISO Builder v1.2 ==="
 
 apt-get update -qq
 apt-get install -y debootstrap xorriso squashfs-tools grub-pc-bin grub-efi-amd64-bin mtools live-boot
@@ -15,6 +15,7 @@ debootstrap --arch=amd64 --variant=minbase noble stageos-build/chroot http://arc
 mount --bind /dev  stageos-build/chroot/dev
 mount -t proc proc stageos-build/chroot/proc
 mount -t sysfs sys  stageos-build/chroot/sys
+cp /etc/resolv.conf stageos-build/chroot/etc/resolv.conf
 
 chroot stageos-build/chroot /bin/bash -c "
 export DEBIAN_FRONTEND=noninteractive
@@ -30,7 +31,15 @@ apt-get install -y --no-install-recommends \
   chromium-browser nodejs npm \
   jackd2 ola ffmpeg thunar \
   avahi-daemon usbutils curl wget \
-  xterm feh unclutter
+  xterm feh unclutter \
+  libnss3 libatk1.0-0 libatk-bridge2.0-0 libgtk-3-0 libgbm1 libasound2
+
+# Electron needs a few extra shared libs (above) to run headless-less
+# on a fresh Ubuntu minbase image — without these it fails silently.
+
+# Install Electron globally so apps can be launched as 'electron <dir>'
+echo '>>> Installing Electron runtime (this is the slow part)...'
+npm install -g electron@28 --unsafe-perm 2>&1 | tail -10
 
 # Clean up
 apt-get clean
@@ -63,21 +72,39 @@ XINITRC
 
 mkdir -p /home/stageos/.config/openbox
 cat > /home/stageos/.config/openbox/autostart << 'AUTOSTART'
-xterm &
+unclutter -idle 3 &
+node /opt/stageos/services/output-daemon.js > /tmp/daemon.log 2>&1 &
+sleep 1
+chromium-browser --kiosk --no-sandbox --disable-infobars \
+  --app=file:///opt/stageos/apps/launcher.html &
 AUTOSTART
 
 chown -R stageos:stageos /home/stageos
 "
 
-# Copy apps
+# ── Copy real apps into the chroot ──────────────────────────
 mkdir -p stageos-build/chroot/opt/stageos/{apps,services}
-cp -r apps/booth         stageos-build/chroot/opt/stageos/apps/ 2>/dev/null || true
-cp -r apps/lightscript   stageos-build/chroot/opt/stageos/apps/ 2>/dev/null || true
-cp -r apps/stageflow     stageos-build/chroot/opt/stageos/apps/ 2>/dev/null || true
-cp -r apps/timecode-pro  stageos-build/chroot/opt/stageos/apps/ 2>/dev/null || true
-cp os/output-daemon.js   stageos-build/chroot/opt/stageos/services/ 2>/dev/null || true
-cp os/launcher.html      stageos-build/chroot/opt/stageos/apps/ 2>/dev/null || true
-cp os/equipment-test.html stageos-build/chroot/opt/stageos/apps/ 2>/dev/null || true
+for app in booth lightscript stageflow timecode-pro; do
+  if [ -d "apps/\$app" ]; then
+    echo ">>> Copying \$app..."
+    cp -r "apps/\$app" stageos-build/chroot/opt/stageos/apps/
+  fi
+done
+cp os/output-daemon.js     stageos-build/chroot/opt/stageos/services/
+cp os/launcher.html        stageos-build/chroot/opt/stageos/apps/
+cp os/equipment-test.html  stageos-build/chroot/opt/stageos/apps/
+
+# ── Install each app's own npm dependencies inside the chroot ──
+# (network still works in a chroot — it shares the host's stack)
+chroot stageos-build/chroot /bin/bash -c "
+cd /opt/stageos/services && npm install ws --no-save 2>&1 | tail -3
+for app in booth lightscript stageflow timecode-pro; do
+  if [ -f \"/opt/stageos/apps/\\\$app/package.json\" ]; then
+    echo \">>> npm install for \\\$app\"
+    cd \"/opt/stageos/apps/\\\$app\" && npm install --production --unsafe-perm 2>&1 | tail -5
+  fi
+done
+"
 
 umount -lf stageos-build/chroot/dev  2>/dev/null || true
 umount -lf stageos-build/chroot/proc 2>/dev/null || true
@@ -87,22 +114,22 @@ umount -lf stageos-build/chroot/sys  2>/dev/null || true
 cp stageos-build/chroot/boot/vmlinuz-*  stageos-build/iso/live/vmlinuz
 cp stageos-build/chroot/boot/initrd.img-* stageos-build/iso/live/initrd.img
 
-# Fixed GRUB config - nomodeset on by default, longer timeout, no quiet splash
+# GRUB config - nomodeset on by default, longer timeout, no quiet splash
 cat > stageos-build/iso/boot/grub/grub.cfg << 'GRUB'
 set default=0
 set timeout=10
 
-menuentry "StageOS v1.0" {
+menuentry "StageOS v1.2" {
   linux /live/vmlinuz boot=live nomodeset net.ifnames=0 biosdevname=0
   initrd /live/initrd.img
 }
 
-menuentry "StageOS v1.0 (Safe Mode)" {
+menuentry "StageOS v1.2 (Safe Mode)" {
   linux /live/vmlinuz boot=live nomodeset xforcevesa vga=normal
   initrd /live/initrd.img
 }
 
-menuentry "StageOS v1.0 (Verbose - Show all messages)" {
+menuentry "StageOS v1.2 (Verbose - Show all messages)" {
   linux /live/vmlinuz boot=live nomodeset
   initrd /live/initrd.img
 }
@@ -118,7 +145,7 @@ mksquashfs stageos-build/chroot stageos-build/iso/live/filesystem.squashfs \
 
 # Build ISO
 echo ">>> Building ISO..."
-grub-mkrescue --output=StageOS-v1.0.iso stageos-build/iso -- -volid STAGEOS_1_1
+grub-mkrescue --output=StageOS-v1.0.iso stageos-build/iso -- -volid STAGEOS_1_2
 
 echo ">>> DONE"
 ls -lh StageOS-v1.0.iso
