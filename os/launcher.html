@@ -256,24 +256,16 @@
 const APPS = [
   { id: 'booth', name: 'Booth', icon: '🎛️', color: '#e8a020',
     desc: 'Unified show control — EOS, M32, ATEM, ProPresenter, Lightkey',
-    cmd:  'node /opt/stageos/apps/booth/main.js',
     tags: ['OSC','MIDI','DMX','Audio','Video'] },
   { id: 'lightscript', name: 'LightScript', icon: '💡', color: '#a855f7',
     desc: 'Full lighting control with timecode, cue system, 3D visualizer, GDTF',
-    cmd:  'node /opt/stageos/apps/lightscript/main.js',
     tags: ['DMX','Art-Net','sACN','MIDI','Timecode'] },
   { id: 'stageflow', name: 'StageFlow', icon: '📽️', color: '#3b82f6',
     desc: 'ProPresenter-style visual output — lyrics, slides, video, multi-screen',
-    cmd:  'node /opt/stageos/apps/stageflow/main.js',
     tags: ['Video','NDI','Multi-Output','Lyrics'] },
   { id: 'timecode-pro', name: 'Timecode Pro', icon: '⏱️', color: '#22c55e',
     desc: 'QLab-alternative show automation, timecode-driven cues and playback',
-    cmd:  'node /opt/stageos/apps/timecode-pro/main.js',
     tags: ['LTC','MTC','OSC','Video','Audio'] },
-  { id: 'booth-sports', name: 'Booth Sports', icon: '🏟️', color: '#ef4444',
-    desc: 'Sports broadcast control — Jumbotrons, scoring, ads, live stream',
-    cmd:  'node /opt/stageos/apps/booth-sports/main.js',
-    tags: ['Video','Scoring','Stream','Graphics'] },
   { id: 'settings', name: 'Settings', icon: '⚙️', color: '#6b7280',
     desc: 'Network config, device IPs, display assignment, JACK routing, OLA setup',
     cmd:  'SETTINGS',
@@ -296,18 +288,24 @@ function renderApps() {
   `).join('');
 }
 
-function launchApp(id) {
+async function launchApp(id) {
   const app = APPS.find(a => a.id === id);
   if (!app) return;
   if (app.cmd === 'SETTINGS') { showToast('Settings panel — coming soon'); return; }
-  if (window.electronAPI) {
-    window.electronAPI.launchApp(id, app.cmd);
-  } else {
-    fetch(`http://localhost:9002/launch?id=${id}&cmd=${encodeURIComponent(app.cmd)}`).catch(()=>{});
-  }
-  running.add(id);
-  renderApps();
   showToast(`Launching ${app.name}…`);
+  try {
+    const res = await fetch(`http://localhost:9002/launch?id=${id}`);
+    const result = await res.json();
+    if (result.ok) {
+      running.add(id);
+      renderApps();
+      showToast(result.alreadyRunning ? `${app.name} already running` : `${app.name} launched`);
+    } else {
+      showToast(`Failed to launch ${app.name}: ${result.error || 'unknown error'}`);
+    }
+  } catch(e) {
+    showToast(`Could not reach output daemon — is it running?`);
+  }
 }
 
 let ws;
