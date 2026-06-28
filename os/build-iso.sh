@@ -1,8 +1,13 @@
 #!/bin/bash
-# StageOS ISO Builder v1.2 - real apps, Electron runtime, working launcher
+# StageOS ISO Builder v1.3 - fix kernel panic by removing risky global
+# Electron install (its failure was being silently masked by a pipe,
+# likely corrupting the build). Real app source + lightweight deps
+# (ws) are kept. Electron app launching will be reintroduced separately
+# once boot is rock solid.
 set -e
+set -o pipefail
 
-echo "=== StageOS ISO Builder v1.2 ==="
+echo "=== StageOS ISO Builder v1.3 ==="
 
 apt-get update -qq
 apt-get install -y debootstrap xorriso squashfs-tools grub-pc-bin grub-efi-amd64-bin mtools live-boot
@@ -33,14 +38,13 @@ apt-get install -y --no-install-recommends \
   jackd2 ola ffmpeg thunar \
   avahi-daemon usbutils curl wget \
   xterm feh unclutter \
-  libnss3 libatk1.0-0 libatk-bridge2.0-0 libgtk-3-0 libgbm1 libasound2t64
+  libasound2t64
 
-# Electron needs a few extra shared libs (above) to run headless-less
-# on a fresh Ubuntu minbase image — without these it fails silently.
-
-# Install Electron globally so apps can be launched as 'electron <dir>'
-echo '>>> Installing Electron runtime (this is the slow part)...'
-npm install -g electron@28 --unsafe-perm 2>&1 | tail -10
+# NOTE: global Electron runtime install removed for this build.
+# It was the largest/riskiest new addition and its failure mode
+# (network timeout / partial download) was being silently masked
+# by a '| tail' pipe, which can corrupt the resulting filesystem
+# image. Re-adding this needs its own isolated, verified build.
 
 # Clean up
 apt-get clean
@@ -86,25 +90,24 @@ chown -R stageos:stageos /home/stageos
 # ── Copy real apps into the chroot ──────────────────────────
 mkdir -p stageos-build/chroot/opt/stageos/{apps,services}
 for app in booth lightscript stageflow timecode-pro; do
-  if [ -d "apps/\$app" ]; then
-    echo ">>> Copying \$app..."
-    cp -r "apps/\$app" stageos-build/chroot/opt/stageos/apps/
+  if [ -d "apps/$app" ]; then
+    echo ">>> Copying $app..."
+    cp -r "apps/$app" stageos-build/chroot/opt/stageos/apps/
   fi
 done
 cp os/output-daemon.js     stageos-build/chroot/opt/stageos/services/
 cp os/launcher.html        stageos-build/chroot/opt/stageos/apps/
 cp os/equipment-test.html  stageos-build/chroot/opt/stageos/apps/
 
-# ── Install each app's own npm dependencies inside the chroot ──
-# (network still works in a chroot — it shares the host's stack)
+# ── Install only the daemon's own (tiny) ws dependency ───────
+# Per-app npm installs for the real apps are skipped here too —
+# they're not needed just to BOOT and see the launcher screen,
+# and they add more surface area for the same kind of silent
+# failure that likely caused the panic. Re-add once boot is solid.
 chroot stageos-build/chroot /bin/bash -c "
-cd /opt/stageos/services && npm install ws --no-save 2>&1 | tail -3
-for app in booth lightscript stageflow timecode-pro; do
-  if [ -f \"/opt/stageos/apps/\\\$app/package.json\" ]; then
-    echo \">>> npm install for \\\$app\"
-    cd \"/opt/stageos/apps/\\\$app\" && npm install --production --unsafe-perm 2>&1 | tail -5
-  fi
-done
+set -e
+set -o pipefail
+cd /opt/stageos/services && npm install ws --no-save
 "
 
 umount -lf stageos-build/chroot/dev  2>/dev/null || true
@@ -120,17 +123,17 @@ cat > stageos-build/iso/boot/grub/grub.cfg << 'GRUB'
 set default=0
 set timeout=10
 
-menuentry "StageOS v1.2" {
+menuentry "StageOS v1.3" {
   linux /live/vmlinuz boot=live nomodeset net.ifnames=0 biosdevname=0
   initrd /live/initrd.img
 }
 
-menuentry "StageOS v1.2 (Safe Mode)" {
+menuentry "StageOS v1.3 (Safe Mode)" {
   linux /live/vmlinuz boot=live nomodeset xforcevesa vga=normal
   initrd /live/initrd.img
 }
 
-menuentry "StageOS v1.2 (Verbose - Show all messages)" {
+menuentry "StageOS v1.3 (Verbose - Show all messages)" {
   linux /live/vmlinuz boot=live nomodeset
   initrd /live/initrd.img
 }
@@ -138,15 +141,21 @@ GRUB
 
 cp stageos-build/iso/boot/grub/grub.cfg stageos-build/iso/EFI/boot/grub.cfg
 
+echo ">>> Disk space before squashfs:"
+df -h .
+
 # Build squashfs
 echo ">>> Building filesystem..."
 mksquashfs stageos-build/chroot stageos-build/iso/live/filesystem.squashfs \
   -comp gzip -b 1M -noappend \
   -e boot -e proc -e sys -e dev -e run -e tmp -e var/cache/apt
 
+echo ">>> Disk space after squashfs:"
+df -h .
+
 # Build ISO
 echo ">>> Building ISO..."
-grub-mkrescue --output=StageOS-v1.0.iso stageos-build/iso -- -volid STAGEOS_1_2
+grub-mkrescue --output=StageOS-v1.0.iso stageos-build/iso -- -volid STAGEOS_1_3
 
 echo ">>> DONE"
 ls -lh StageOS-v1.0.iso
