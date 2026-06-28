@@ -46,6 +46,16 @@ apt-get install -y --no-install-recommends \
 # by a '| tail' pipe, which can corrupt the resulting filesystem
 # image. Re-adding this needs its own isolated, verified build.
 
+# Force a clean initramfs regeneration NOW that all packages
+# (including live-boot-initramfs-tools) are installed. If the
+# kernel's initrd got built before live-boot's hook was registered
+# during the apt-get transaction above, the resulting initrd.img
+# would be missing the logic that finds and mounts the squashfs —
+# which causes init to start in an empty environment and die
+# immediately (kernel panic: 'Attempted to kill init!').
+echo '>>> Regenerating initramfs with live-boot hooks...'
+update-initramfs -u -k all
+
 # Clean up
 apt-get clean
 rm -rf /var/cache/apt/archives/*.deb /usr/share/doc/* /usr/share/man/*
