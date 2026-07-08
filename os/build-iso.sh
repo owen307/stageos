@@ -38,6 +38,7 @@ apt-get install -y --no-install-recommends \
   jackd2 ola ffmpeg thunar \
   avahi-daemon usbutils curl wget \
   xterm feh unclutter \
+  ca-certificates \
   libasound2t64
 
 # NOTE: global Electron runtime install removed for this build.
@@ -45,6 +46,22 @@ apt-get install -y --no-install-recommends \
 # (network timeout / partial download) was being silently masked
 # by a '| tail' pipe, which can corrupt the resulting filesystem
 # image. Re-adding this needs its own isolated, verified build.
+
+# Harden the udev init-bottom hook against slow device enumeration.
+# Root-caused via interactive break=bottom debugging: on a clean/fast
+# boot everything mounts fine, but under slow device enumeration
+# (flaky USB/CD controllers, slow storage) the /dev move-mount can
+# race ahead of udev finishing its work, which leaves init unable to
+# open \${rootmnt}/dev/console and the kernel panics with
+# 'Attempted to kill init!'. A short udevadm settle before the move
+# closes that race without meaningfully slowing normal boots.
+UDEV_HOOK=/usr/share/initramfs-tools/scripts/init-bottom/udev
+if [ -f \"\${UDEV_HOOK}\" ] && ! grep -q 'udevadm settle' \"\${UDEV_HOOK}\"; then
+  echo '>>> Patching udev init-bottom hook with udevadm settle...'
+  sed -i '/move the .dev tmpfs to the rootfs/i \\
+udevadm settle --timeout=30 || true\\
+' \"\${UDEV_HOOK}\"
+fi
 
 # Force a clean initramfs regeneration NOW that all packages
 # (including live-boot-initramfs-tools) are installed. If the
@@ -114,37 +131,92 @@ cp os/equipment-test.html  stageos-build/chroot/opt/stageos/apps/
 # they're not needed just to BOOT and see the launcher screen,
 # and they add more surface area for the same kind of silent
 # failure that likely caused the panic. Re-add once boot is solid.
+#
+# NOTE: previously this could fail with SELF_SIGNED_CERT_IN_CHAIN
+# (npm registry request failing TLS verification inside the chroot,
+# e.g. behind a corporate/CI proxy that MITMs HTTPS) while still
+# silently leaving a usable node_modules/ws behind from the partial
+# attempt — masking a real failure. Now: point npm explicitly at the
+# system CA bundle, retry once, and hard-fail with a clear message
+# if it still can't install, instead of shipping a build that got
+# lucky.
 chroot stageos-build/chroot /bin/bash -c "
 set -e
 set -o pipefail
-cd /opt/stageos/services && npm install ws --no-save
+update-ca-certificates
 "
 
-umount -lf stageos-build/chroot/dev  2>/dev/null || true
-umount -lf stageos-build/chroot/proc 2>/dev/null || true
-umount -lf stageos-build/chroot/sys  2>/dev/null || true
+# If the build machine sits behind a proxy that does TLS interception
+# (corporate network, some CI runners, this sandbox), the chroot's
+# freshly-debootstrapped CA bundle won't trust it even though the host
+# does. Trust whatever the host trusts, so npm can actually reach the
+# registry through the same path apt/curl already use successfully.
+# This must happen AFTER update-ca-certificates, which would otherwise
+# regenerate the bundle from scratch and wipe this out.
+if [ -f /etc/ssl/certs/ca-certificates.crt ]; then
+  cp /etc/ssl/certs/ca-certificates.crt stageos-build/chroot/etc/ssl/certs/ca-certificates.crt
+fi
+
+chroot stageos-build/chroot /bin/bash -c "
+set -e
+set -o pipefail
+cd /opt/stageos/services
+npm config set cafile /etc/ssl/certs/ca-certificates.crt
+rm -rf node_modules
+if ! npm install ws --no-save; then
+  echo '>>> First npm install attempt failed, retrying...'
+  sleep 3
+  npm install ws --no-save
+fi
+if [ ! -d node_modules/ws ]; then
+  echo 'FATAL: node_modules/ws was not installed.' >&2
+  exit 1
+fi
+echo '>>> ws dependency installed OK'
+"
+
+unmount_chroot_binds() {
+  for d in dev proc sys; do
+    for i in 1 2 3 4 5 6 7 8 9 10; do
+      if ! mountpoint -q "stageos-build/chroot/${d}" 2>/dev/null; then
+        break
+      fi
+      umount "stageos-build/chroot/${d}" 2>/dev/null || umount -l "stageos-build/chroot/${d}" 2>/dev/null || true
+      sleep 0.5
+    done
+    if mountpoint -q "stageos-build/chroot/${d}" 2>/dev/null; then
+      echo "WARNING: stageos-build/chroot/${d} is still mounted after retries" >&2
+    fi
+  done
+}
+unmount_chroot_binds
 
 # Copy kernel and initrd
 cp stageos-build/chroot/boot/vmlinuz-*  stageos-build/iso/live/vmlinuz
 cp stageos-build/chroot/boot/initrd.img-* stageos-build/iso/live/initrd.img
 
 # GRUB config - nomodeset on by default, longer timeout, no quiet splash
+# Dual console: ttyS0 first (so early boot/kernel messages are visible
+# over a serial connection for debugging, e.g. via QEMU or a real
+# serial header on rack hardware), tty0 last (so the physical
+# HDMI/touchscreen display remains the *preferred* console that
+# getty/agetty and the X autostart logic actually use).
 cat > stageos-build/iso/boot/grub/grub.cfg << 'GRUB'
 set default=0
 set timeout=10
 
 menuentry "StageOS v1.3" {
-  linux /live/vmlinuz boot=live nomodeset net.ifnames=0 biosdevname=0
+  linux /live/vmlinuz boot=live nomodeset net.ifnames=0 biosdevname=0 console=ttyS0,115200n8 console=tty0
   initrd /live/initrd.img
 }
 
 menuentry "StageOS v1.3 (Safe Mode)" {
-  linux /live/vmlinuz boot=live nomodeset xforcevesa vga=normal
+  linux /live/vmlinuz boot=live nomodeset xforcevesa vga=normal console=ttyS0,115200n8 console=tty0
   initrd /live/initrd.img
 }
 
 menuentry "StageOS v1.3 (Verbose - Show all messages)" {
-  linux /live/vmlinuz boot=live nomodeset
+  linux /live/vmlinuz boot=live nomodeset console=ttyS0,115200n8 console=tty0
   initrd /live/initrd.img
 }
 GRUB
@@ -156,9 +228,21 @@ df -h .
 
 # Build squashfs
 echo ">>> Building filesystem..."
+# IMPORTANT: exclude patterns use a trailing /* so only each
+# directory's CONTENTS are excluded, not the directory node itself.
+# Root-caused via interactive break=bottom debugging: with bare
+# excludes ("-e dev" etc, no trailing /*), mksquashfs would
+# sometimes omit /dev, /proc, /sys, /run, /boot from the image
+# entirely rather than including them as empty mountpoints,
+# depending on whether the chroot's bind-mounts were still attached
+# when mksquashfs ran. Live-boot's init-bottom hook needs these as
+# real (if empty) directories to move-mount onto — when they're
+# missing outright, that mount fails with "No such file or
+# directory" and the kernel panics with "Attempted to kill init!".
+# This was the actual bug, not a device-enumeration timing race.
 mksquashfs stageos-build/chroot stageos-build/iso/live/filesystem.squashfs \
   -comp gzip -b 1M -noappend \
-  -e boot -e proc -e sys -e dev -e run -e tmp -e var/cache/apt
+  -e boot/* -e proc/* -e sys/* -e dev/* -e run/* -e tmp/* -e var/cache/apt/*
 
 echo ">>> Disk space after squashfs:"
 df -h .
